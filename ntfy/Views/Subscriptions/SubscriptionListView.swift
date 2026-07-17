@@ -177,7 +177,7 @@ struct SubscriptionItemRowView: View {
     var body: some View {
         let totalNotificationCount = notificationsModel.notifications.count
         HStack(spacing: 12) {
-            TopicAvatarView(name: subscription.topicName())
+            TopicAvatarView(name: subscription.topicName(), emoji: subscription.icon)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
