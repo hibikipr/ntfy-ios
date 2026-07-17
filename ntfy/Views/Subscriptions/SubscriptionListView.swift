@@ -280,15 +280,14 @@ struct TopicAvatarView: View {
     }
 
     var body: some View {
-        if let emoji, !emoji.isEmpty {
-            Text(emoji)
-                .font(.system(size: 24))
+        ZStack {
+            Circle()
+                .fill(color)
                 .frame(width: 40, height: 40)
-        } else {
-            ZStack {
-                Circle()
-                    .fill(color)
-                    .frame(width: 40, height: 40)
+            if let emoji, !emoji.isEmpty {
+                Text(emoji)
+                    .font(.system(size: 20))
+            } else {
                 Text(initial)
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(.white)
