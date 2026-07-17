@@ -121,6 +121,13 @@ class Store: ObservableObject {
         return try? context.fetch(Subscription.fetchRequest())
     }
 
+    func saveIcon(for subscription: Subscription, icon: String?) {
+        context.performAndWait {
+            subscription.icon = (icon?.isEmpty ?? true) ? nil : icon
+            try? context.save()
+        }
+    }
+
     func completeAttachmentDownload(notificationID: String, localPath: String, resolvedType: String?, resolvedSize: Int64) {
         context.performAndWait {
             let request = Notification.fetchRequest()
