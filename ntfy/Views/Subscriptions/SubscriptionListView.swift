@@ -258,6 +258,7 @@ struct AllNotificationsRowView: View {
 
 struct TopicAvatarView: View {
     let name: String
+    var emoji: String? = nil
 
     private var initial: String {
         String(name.first ?? "?").uppercased()
@@ -270,13 +271,19 @@ struct TopicAvatarView: View {
     }
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color)
+        if let emoji, !emoji.isEmpty {
+            Text(emoji)
+                .font(.system(size: 24))
                 .frame(width: 40, height: 40)
-            Text(initial)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+        } else {
+            ZStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: 40, height: 40)
+                Text(initial)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
         }
     }
 }
