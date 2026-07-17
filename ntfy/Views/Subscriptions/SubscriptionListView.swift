@@ -158,6 +158,7 @@ struct SubscriptionItemNavView: View {
 struct SubscriptionItemRowView: View {
     @ObservedObject var subscription: Subscription
     @StateObject private var notificationsModel: NotificationsObservable
+    @State private var showIconEditor = false
 
     init(subscription: Subscription) {
         self.subscription = subscription
@@ -177,7 +178,12 @@ struct SubscriptionItemRowView: View {
     var body: some View {
         let totalNotificationCount = notificationsModel.notifications.count
         HStack(spacing: 12) {
-            TopicAvatarView(name: subscription.topicName())
+            Button {
+                showIconEditor = true
+            } label: {
+                TopicAvatarView(name: subscription.topicName(), emoji: subscription.icon)
+            }
+            .buttonStyle(.plain)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -208,6 +214,9 @@ struct SubscriptionItemRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .sheet(isPresented: $showIconEditor) {
+            TopicIconEditorView(subscription: subscription)
+        }
     }
 }
 
@@ -258,6 +267,7 @@ struct AllNotificationsRowView: View {
 
 struct TopicAvatarView: View {
     let name: String
+    var emoji: String? = nil
 
     private var initial: String {
         String(name.first ?? "?").uppercased()
@@ -270,13 +280,19 @@ struct TopicAvatarView: View {
     }
 
     var body: some View {
-        ZStack {
-            Circle()
-                .fill(color)
+        if let emoji, !emoji.isEmpty {
+            Text(emoji)
+                .font(.system(size: 24))
                 .frame(width: 40, height: 40)
-            Text(initial)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(.white)
+        } else {
+            ZStack {
+                Circle()
+                    .fill(color)
+                    .frame(width: 40, height: 40)
+                Text(initial)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
         }
     }
 }
