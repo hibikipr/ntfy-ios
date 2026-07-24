@@ -18,7 +18,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
         Log.d(tag, "Launching AppDelegate")
 
         FirebaseApp.configure()
-        FirebaseConfiguration.shared.setLoggerLevel(.max)
+        FirebaseConfiguration.shared.setLoggerLevel(.warning)
 
         // Register app permissions for push notifications
         UNUserNotificationCenter.current().delegate = self
@@ -244,7 +244,19 @@ extension AppDelegate: MessagingDelegate {
         } else {
             Log.w(tag, "Firebase token missing")
         }
-        
+
+        subscribeToFirebaseTopics()
+    }
+}
+
+extension AppDelegate {
+    /// (Re-)subscribes to the "~poll" topic and every current subscription's Firebase topic.
+    /// Safe to call repeatedly: Firebase no-ops on an already-subscribed topic, so this only
+    /// meaningfully retries topics that previously failed to subscribe. Called on token
+    /// refresh, on every app foreground, and on every background "~poll" trigger, to recover
+    /// from silent subscription failures (network blip, token rotation) without waiting for
+    /// the token itself to change again.
+    func subscribeToFirebaseTopics() {
         // Subscribe to ~poll topic
         Messaging.messaging().subscribe(toTopic: pollTopic) { error in
             if let error {
@@ -253,10 +265,10 @@ extension AppDelegate: MessagingDelegate {
                 Log.d(self.tag, "Firebase subscribe succeeded for \(self.pollTopic)")
             }
         }
-        
+
         // Re-subscribe to Firebase for all topics
         let store = Store.shared
-        store.getSubscriptions()?.forEach{ subscription in
+        store.getSubscriptions()?.forEach { subscription in
             if let baseUrl = subscription.baseUrl, let topic = subscription.topic {
                 let firebaseTopicName = firebaseTopic(baseUrl: baseUrl, topic: topic)
                 Log.d(tag, "Re-subscribing to topic \(baseUrl)/\(topic)")
