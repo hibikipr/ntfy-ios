@@ -104,6 +104,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
             return
         }
 
+        // Retry any previously-failed Firebase subscriptions while we're already awake (#1305)
+        subscribeToFirebaseTopics()
+
         // Poll and show new messages as notifications
         let store = Store.shared
         let subscriptionManager = SubscriptionManager(store: store)
