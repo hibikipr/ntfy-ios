@@ -204,6 +204,10 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
     ) {
         let userInfo = notification.request.content.userInfo
         Log.d(tag, "Notification received via userNotificationCenter(willPresent)", userInfo)
+        if let message = Message.from(userInfo: userInfo), message.event == "message" {
+            let baseUrl = userInfo["base_url"] as? String ?? Config.appBaseUrl
+            _ = Store.shared.save(notificationFromMessage: message, baseUrl: baseUrl, topic: message.topic)
+        }
         completionHandler([[.banner, .sound]])
     }
     
