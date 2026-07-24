@@ -21,7 +21,7 @@ class Store: ObservableObject {
 
     static let shared = Store()
     static let tag = "Store"
-    static let appGroup = "group.io.heckel.ntfy" // Must match app group of ntfy = ntfyNSE targets
+    static let appGroup = "group.com.victormanuel.ntfy" // Must match app group of ntfy = ntfyNSE targets
     static let modelName = "ntfy" // Must match .xdatamodeld folder
     static let prefKeyDefaultBaseUrl = "defaultBaseUrl"
     static let prefKeyAttachmentAutoDownloadMaxSize = "attachmentAutoDownloadMaxSize"
