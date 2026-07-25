@@ -61,6 +61,7 @@ class NotificationService: UNNotificationServiceExtension {
             contentHandler(request.content)
             return
         }
+        content.badge = NSNumber(value: store?.unreadNotificationCount() ?? 0)
         let user = store?.getBasicUser(baseUrl: baseUrl)
         content.modify(message: message, baseUrl: baseUrl)
         content.attachImageIfNeeded(message: message, user: user) {
