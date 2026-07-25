@@ -14,7 +14,7 @@ class ApiService {
         let since = subscription.lastNotificationId ?? "all"
         let urlString = "\(url)/json?poll=1&since=\(since)"
         
-        Log.d(tag, "Polling from \(urlString) with user \(user?.username ?? "anonymous")")
+        Log.d(tag, "Polling from \(urlString) with user \(user != nil ? "<redacted>" : "anonymous")")
         fetchJsonData(urlString: urlString, user: user, completionHandler: completionHandler)
     }
     
@@ -27,7 +27,7 @@ class ApiService {
             completionHandler(nil, URLError(.badURL))
             return
         }
-        Log.d(tag, "Polling single message from \(url) with user \(user?.username ?? "anonymous")")
+        Log.d(tag, "Polling single message from \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
         
         let request = newRequest(url: url, user: user)
         newSession(timeout: 30).dataTask(with: request) { (data, response, error) in
@@ -84,7 +84,7 @@ class ApiService {
     func checkAuth(baseUrl: String, topic: String, user: BasicUser?, completionHandler: @escaping(AuthResult) -> Void) {
         guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else { return }
         let request = newRequest(url: url, user: user)
-        Log.d(tag, "Checking auth for \(url) with user \(user?.username ?? "anonymous")")
+        Log.d(tag, "Checking auth for \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
         newSession(timeout: 10).dataTask(with: request) { (data, response, error) in
             if let error = error {
                 Log.e(self.tag, "Error checking auth: \(error)")
