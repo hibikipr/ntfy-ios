@@ -30,6 +30,7 @@
     </entity>
     <entity name="Subscription" representedClassName="Subscription" syncable="YES" codeGenerationType="class">
         <attribute name="baseUrl" attributeType="String"/>
+        <attribute name="customDisplayName" optional="YES" attributeType="String" maxValueString="64"/>
         <attribute name="icon" optional="YES" attributeType="String"/>
         <attribute name="lastNotificationId" optional="YES" attributeType="String"/>
         <attribute name="topic" attributeType="String" minValueString="1" maxValueString="64" regularExpressionString="^[-_A-Za-z0-9]{1,64}$"/>
