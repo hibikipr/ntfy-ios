@@ -1,14 +1,16 @@
 import SwiftUI
 
-struct TopicIconEditorView: View {
+struct TopicEditorView: View {
     @EnvironmentObject private var store: Store
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var subscription: Subscription
     @State private var iconText: String
+    @State private var displayNameText: String
 
     init(subscription: Subscription) {
         self.subscription = subscription
         _iconText = State(initialValue: subscription.icon ?? "")
+        _displayNameText = State(initialValue: subscription.customDisplayName ?? "")
     }
 
     var body: some View {
@@ -38,6 +40,24 @@ struct TopicIconEditorView: View {
                         .padding(.horizontal, 32)
                 }
 
+                Divider()
+                    .padding(.horizontal, 32)
+
+                VStack(spacing: 8) {
+                    Text("Display Name")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    TextField(subscription.displayName(), text: $displayNameText)
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.center)
+                        .frame(width: 220)
+                    Text("Leave empty to show the default topic name.")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+
                 Spacer()
 
                 if !iconText.isEmpty {
@@ -53,8 +73,14 @@ struct TopicIconEditorView: View {
             .navigationTitle(subscription.topicName())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button("Save") {
+                        store.saveDisplayName(for: subscription, name: displayNameText)
                         dismiss()
                     }
                 }
@@ -63,11 +89,11 @@ struct TopicIconEditorView: View {
     }
 }
 
-struct TopicIconEditorView_Previews: PreviewProvider {
+struct TopicEditorView_Previews: PreviewProvider {
     static var previews: some View {
         let store = Store.preview
         let subscription = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
-        TopicIconEditorView(subscription: subscription)
+        TopicEditorView(subscription: subscription)
             .environment(\.managedObjectContext, store.context)
             .environmentObject(store)
     }

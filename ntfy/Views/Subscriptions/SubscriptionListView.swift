@@ -158,7 +158,7 @@ struct SubscriptionItemNavView: View {
 struct SubscriptionItemRowView: View {
     @ObservedObject var subscription: Subscription
     @StateObject private var notificationsModel: NotificationsObservable
-    @State private var showIconEditor = false
+    @State private var showEditor = false
 
     init(subscription: Subscription) {
         self.subscription = subscription
@@ -179,7 +179,7 @@ struct SubscriptionItemRowView: View {
         let totalNotificationCount = notificationsModel.notifications.count
         HStack(spacing: 12) {
             Button {
-                showIconEditor = true
+                showEditor = true
             } label: {
                 TopicAvatarView(name: subscription.topicName(), emoji: subscription.icon)
             }
@@ -214,8 +214,8 @@ struct SubscriptionItemRowView: View {
             }
         }
         .padding(.vertical, 4)
-        .sheet(isPresented: $showIconEditor) {
-            TopicIconEditorView(subscription: subscription)
+        .sheet(isPresented: $showEditor) {
+            TopicEditorView(subscription: subscription)
         }
     }
 }
