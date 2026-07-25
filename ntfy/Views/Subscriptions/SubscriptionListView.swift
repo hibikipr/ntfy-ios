@@ -187,7 +187,7 @@ struct SubscriptionItemRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 0) {
-                        Text(subscription.topicName())
+                        Text(subscription.displayName())
                             .font(.headline)
                             .lineLimit(1)
                         if !isDefaultServer, let baseUrl = subscription.baseUrl {

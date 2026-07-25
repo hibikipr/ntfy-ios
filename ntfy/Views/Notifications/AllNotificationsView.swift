@@ -26,7 +26,7 @@ struct AllNotificationsView: View {
                 NotificationRowView(
                     notification: notification,
                     onCopyMessage: {},
-                    subscriptionLabel: notification.subscription?.topicName()
+                    subscriptionLabel: notification.subscription?.displayName()
                 )
             }
         }
