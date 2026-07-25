@@ -196,7 +196,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
 }
 
 extension AppDelegate: UNUserNotificationCenterDelegate {
-    /// Executed when the app is in the foreground. Nothing has to be done here, except call the completionHandler.
+    /// Executed when the app is in the foreground. The notification-service-extension (NSE) is what
+    /// normally saves an incoming message to Core Data, but NSE does not run on the Simulator (a
+    /// documented Apple limitation) and can be skipped by the system in some foreground scenarios on
+    /// real devices too. Save here as a fallback so the message always ends up in the topic list, not
+    /// just as a transient banner. Safe to call even when NSE also saves the same message — Store's
+    /// save path already dedupes by message ID before inserting.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
