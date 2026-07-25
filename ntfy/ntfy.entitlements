@@ -4,11 +4,9 @@
 <dict>
 	<key>aps-environment</key>
 	<string>development</string>
-	<key>com.apple.developer.usernotifications.critical-alerts</key>
-	<true/>
 	<key>com.apple.security.application-groups</key>
 	<array>
-		<string>group.io.heckel.ntfy</string>
+		<string>group.com.victormanuel.ntfy</string>
 	</array>
 </dict>
 </plist>
