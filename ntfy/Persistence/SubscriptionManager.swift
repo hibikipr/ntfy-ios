@@ -19,7 +19,7 @@ struct SubscriptionManager {
             }
         }
         let subscription = store.saveSubscription(baseUrl: normalizedBaseUrl, topic: topic)
-        poll(subscription)
+        poll(subscription, notifyOnNewMessages: false)
     }
     
     func unsubscribe(_ subscription: Subscription) {
@@ -39,18 +39,18 @@ struct SubscriptionManager {
         }
     }
     
-    func poll(_ subscription: Subscription) {
-        poll(subscription) { _ in }
+    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true) {
+        poll(subscription, notifyOnNewMessages: notifyOnNewMessages) { _ in }
     }
-    
-    func poll(_ subscription: Subscription, completionHandler: @escaping ([Message]) -> Void) {
+
+    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true, completionHandler: @escaping ([Message]) -> Void) {
         // This is a bit of a hack but it prevents us from polling dead subscriptions
         if (subscription.baseUrl == nil) {
             Log.d(tag, "Attempting to poll dead subscription failed")
             completionHandler([])
             return
         }
-        
+
         let user = store.getUser(baseUrl: subscription.baseUrl!)?.toBasicUser()
         Log.d(tag, "Polling from \(subscription.urlString()) with user \(user?.username ?? "anonymous")")
         ApiService.shared.poll(subscription: subscription, user: user) { messages, error in
@@ -60,10 +60,18 @@ struct SubscriptionManager {
                 return
             }
             Log.d(tag, "Polling success, \(messages.count) new message(s)", messages)
-            if !messages.isEmpty {
-                store.save(notificationsFromMessages: messages, withSubscription: subscription)
+            guard !messages.isEmpty else {
+                completionHandler([])
+                return
             }
-            completionHandler(messages)
+            let newMessages = store.save(notificationsFromMessages: messages, withSubscription: subscription)
+            guard notifyOnNewMessages, !newMessages.isEmpty, let baseUrl = subscription.baseUrl else {
+                completionHandler(newMessages)
+                return
+            }
+            LocalNotificationPoster.showSequentially(baseUrl: baseUrl, messages: newMessages) {
+                completionHandler(newMessages)
+            }
         }
     }
 }

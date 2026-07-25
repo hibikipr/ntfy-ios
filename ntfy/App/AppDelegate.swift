@@ -121,20 +121,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
         var didReceiveNewData = false
         subscriptions.forEach { subscription in
             group.enter()
-            guard let baseUrl = subscription.baseUrl else {
+            guard subscription.baseUrl != nil else {
                 Log.w(tag, "Skipping background poll notification for subscription with missing baseUrl")
                 group.leave()
                 return
             }
-            subscriptionManager.poll(subscription) { messages in
-                if !messages.isEmpty {
+            subscriptionManager.poll(subscription) { newMessages in
+                if !newMessages.isEmpty {
                     resultQueue.sync {
                         didReceiveNewData = true
                     }
                 }
-                LocalNotificationPoster.showSequentially(baseUrl: baseUrl, messages: messages) {
-                    group.leave()
-                }
+                group.leave()
             }
         }
         group.notify(queue: .main) {
