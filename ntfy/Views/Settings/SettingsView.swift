@@ -33,6 +33,12 @@ struct SettingsView: View {
                 ) {
                     UserTableView(dialog: $userDialog)
                 }
+                Section(
+                    header: Text("Diagnostics"),
+                    footer: Text("Share or clear the app's local log files. Server URLs and topic names may appear in logs; usernames are redacted.")
+                ) {
+                    DiagnosticsView()
+                }
                 Section(header: Text("About")) {
                     AboutView()
                 }
