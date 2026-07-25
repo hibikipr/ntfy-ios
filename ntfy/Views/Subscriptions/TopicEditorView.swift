@@ -65,7 +65,7 @@ struct TopicEditorView: View {
                         iconText = ""
                         store.saveIcon(for: subscription, icon: nil)
                     } label: {
-                        Text("Remove")
+                        Text("Remove Emoji")
                     }
                     .padding(.bottom, 8)
                 }
