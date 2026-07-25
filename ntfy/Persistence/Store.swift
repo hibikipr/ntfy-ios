@@ -280,15 +280,18 @@ class Store: ObservableObject {
     }
 
     func unreadNotificationCount() -> Int {
-        let request = Notification.fetchRequest()
-        request.predicate = NSPredicate(format: "isRead == %@", NSNumber(value: false))
-        return (try? context.count(for: request)) ?? 0
+        var count = 0
+        context.performAndWait {
+            let request = Notification.fetchRequest()
+            request.predicate = NSPredicate(format: "isRead == %@", NSNumber(value: false))
+            count = (try? context.count(for: request)) ?? 0
+        }
+        return count
     }
 
     func syncBadgeCount() {
         let count = unreadNotificationCount()
         DispatchQueue.main.async {
-            guard #available(iOS 17.0, *) else { return }
             UNUserNotificationCenter.current().setBadgeCount(count)
         }
     }
