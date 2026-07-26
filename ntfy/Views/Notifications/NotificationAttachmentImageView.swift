@@ -9,7 +9,7 @@ import SwiftUI
 
 struct NotificationAttachmentImageView: View {
     @State private var imagePresentation: PresentedImage?
-    @StateObject private var imageLoader = NotificationAttachmentImageLoader()
+    @State private var imageLoader = NotificationAttachmentImageLoader()
 
     let localFileUrl: URL?
     let isLoading: Bool

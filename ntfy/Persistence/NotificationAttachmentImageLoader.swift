@@ -8,7 +8,8 @@
 import SwiftUI
 
 @MainActor
-final class NotificationAttachmentImageLoader: ObservableObject {
+@Observable
+final class NotificationAttachmentImageLoader {
     enum Phase {
         case idle
         case loading
@@ -16,8 +17,8 @@ final class NotificationAttachmentImageLoader: ObservableObject {
         case failed
     }
 
-    @Published var image: UIImage?
-    @Published private(set) var phase: Phase = .idle
+    var image: UIImage?
+    private(set) var phase: Phase = .idle
 
     private static let cache = NSCache<NSString, UIImage>()
     private var currentPath: String?
