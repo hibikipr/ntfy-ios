@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CriticalAlertsSettingView: View {
     @EnvironmentObject private var store: Store
-    @EnvironmentObject private var delegate: AppDelegate
+    @Environment(AppDelegate.self) private var delegate
     @FetchRequest(sortDescriptors: []) private var prefs: FetchedResults<Preference>
     @State private var showingSettingsAlert = false
 

@@ -19,7 +19,7 @@ struct AppMain: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
-                .environmentObject(delegate)
+                .environment(delegate)
                 .environment(\.managedObjectContext, store.context)
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // Use this hook instead of applicationDidBecomeActive, see https://stackoverflow.com/a/68888509/1440785

@@ -4,7 +4,7 @@ import StoreKit
 
 struct SettingsView: View {
     @EnvironmentObject private var store: Store
-    @EnvironmentObject private var delegate: AppDelegate
+    @Environment(AppDelegate.self) private var delegate
     @State private var userDialog: UserDialog?
     
     var body: some View {
@@ -69,5 +69,5 @@ struct SettingsView: View {
     SettingsView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
-        .environmentObject(AppDelegate())
+        .environment(AppDelegate())
 }

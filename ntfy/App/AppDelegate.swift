@@ -6,13 +6,14 @@ import FirebaseCore
 import FirebaseMessaging
 import CoreData
 
-class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
+@Observable
+class AppDelegate: UIResponder, UIApplicationDelegate {
     private let tag = "AppDelegate"
     private let pollTopic = "~poll" // See ntfy server if ever changed
-    
+
     // Implements navigation from notifications, see https://stackoverflow.com/a/70731861/1440785
-    @Published var selectedBaseUrl: String? = nil
-    @Published private(set) var criticalAlertSetting: UNNotificationSetting = .notSupported
+    var selectedBaseUrl: String? = nil
+    private(set) var criticalAlertSetting: UNNotificationSetting = .notSupported
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         Log.d(tag, "Launching AppDelegate")

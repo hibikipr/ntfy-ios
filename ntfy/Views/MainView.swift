@@ -30,5 +30,5 @@ struct MainView: View {
     MainView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
-        .environmentObject(AppDelegate())
+        .environment(AppDelegate())
 }

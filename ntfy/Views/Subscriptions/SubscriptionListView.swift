@@ -12,7 +12,7 @@ struct SubscriptionListView: View {
     let tag = "SubscriptionList"
 
     @EnvironmentObject private var store: Store
-    @EnvironmentObject private var delegate: AppDelegate
+    @Environment(AppDelegate.self) private var delegate
     @StateObject var subscriptionsModel = SubscriptionsObservable()
     @StateObject var allNotificationsModel = AllNotificationsObservable()
     @State private var showingAddDialog = false
@@ -297,5 +297,5 @@ struct UnreadDotView: View {
     SubscriptionListView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
-        .environmentObject(AppDelegate())
+        .environment(AppDelegate())
 }
