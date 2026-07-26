@@ -86,13 +86,15 @@ class NotificationService: UNNotificationServiceExtension {
         let user = store?.getBasicUser(baseUrl: subscription.baseUrl)
         // The extension only needs contentHandler to be called from the async callback
         Task {
+            let message: Message
             do {
-                let message = try await ApiService.shared.poll(baseUrl: subscription.baseUrl, topic: subscription.topic, messageId: pollId, user: user)
-                self.handleMessage(request, content, subscription.baseUrl, message, contentHandler)
+                message = try await ApiService.shared.poll(baseUrl: subscription.baseUrl, topic: subscription.topic, messageId: pollId, user: user)
             } catch {
                 Log.w(self.tag, "Error fetching poll request message topic=\(pollRequest.topic), pollId=\(pollId), subscription=\(topicUrl(baseUrl: subscription.baseUrl, topic: subscription.topic))", error)
                 contentHandler(request.content)
+                return
             }
+            self.handleMessage(request, content, subscription.baseUrl, message, contentHandler)
         }
     }
 }

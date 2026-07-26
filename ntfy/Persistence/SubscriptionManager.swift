@@ -42,6 +42,7 @@ struct SubscriptionManager {
     }
     
     @discardableResult
+    @MainActor
     func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true) async -> [Message] {
         // This is a bit of a hack but it prevents us from polling dead subscriptions
         guard subscription.baseUrl != nil else {

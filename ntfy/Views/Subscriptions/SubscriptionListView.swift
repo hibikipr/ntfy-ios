@@ -99,8 +99,13 @@ struct SubscriptionListView: View {
     }
 
     private func pollSubscriptions() async {
-        for subscription in subscriptionsModel.subscriptions {
-            await subscriptionManager.poll(subscription)
+        let subscriptionManager = subscriptionManager
+        await withTaskGroup(of: Void.self) { group in
+            for subscription in subscriptionsModel.subscriptions {
+                group.addTask {
+                    await subscriptionManager.poll(subscription)
+                }
+            }
         }
     }
 }

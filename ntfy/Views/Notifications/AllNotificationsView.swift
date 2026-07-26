@@ -83,8 +83,12 @@ struct AllNotificationsView: View {
 
     private func pollAllSubscriptions() async {
         let subscriptionManager = SubscriptionManager(store: store)
-        for subscription in store.getSubscriptions() ?? [] {
-            await subscriptionManager.poll(subscription)
+        await withTaskGroup(of: Void.self) { group in
+            for subscription in store.getSubscriptions() ?? [] {
+                group.addTask {
+                    await subscriptionManager.poll(subscription)
+                }
+            }
         }
     }
 }
