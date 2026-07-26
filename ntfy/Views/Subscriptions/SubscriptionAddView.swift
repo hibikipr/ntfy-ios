@@ -217,7 +217,7 @@ struct ErrorView: View {
     var body: some View {
         HStack {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.red)
+                .foregroundStyle(.red)
                 .font(.title2)
             Text(error)
                 .font(.subheadline)

@@ -60,7 +60,7 @@ struct NotificationAttachmentSectionView: View {
                         HStack(alignment: .center, spacing: 10) {
                             Image(systemName: attachment.systemImageName())
                                 .font(.title3)
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.gray)
                                 .frame(width: 24, height: 24)
 
                             VStack(alignment: .leading, spacing: 3) {
@@ -71,7 +71,7 @@ struct NotificationAttachmentSectionView: View {
                                 if !statusText.isEmpty {
                                     Text(statusText)
                                         .font(.caption)
-                                        .foregroundColor(statusColor)
+                                        .foregroundStyle(statusColor)
                                         .lineLimit(2)
                                 }
                             }
@@ -99,7 +99,7 @@ struct NotificationAttachmentSectionView: View {
             if currentProgressState == .failed {
                 Text("The last download attempt failed.")
                     .font(.caption)
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
             }
         }
         .padding(.top, 8)
@@ -170,13 +170,13 @@ struct NotificationAttachmentSectionView: View {
                         } else {
                             Image(systemName: "photo")
                                 .font(.title2)
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.gray)
                         }
 
                         Text(attachment.displayName())
                             .font(.subheadline)
                             .bold()
-                            .foregroundColor(.primary)
+                            .foregroundStyle(.primary)
                             .lineLimit(2)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 20)
@@ -184,7 +184,7 @@ struct NotificationAttachmentSectionView: View {
                         if !statusText.isEmpty {
                             Text(statusText)
                                 .font(.caption)
-                                .foregroundColor(statusColor)
+                                .foregroundStyle(statusColor)
                                 .lineLimit(2)
                                 .multilineTextAlignment(.center)
                                 .padding(.horizontal, 20)
@@ -193,7 +193,7 @@ struct NotificationAttachmentSectionView: View {
                         if !shouldShowLoadingPlaceholder(resolvedLocalFileUrl: localFileUrl) {
                             Text("Tap to load image")
                                 .font(.caption.weight(.semibold))
-                                .foregroundColor(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                 }
@@ -258,7 +258,7 @@ struct NotificationAttachmentSectionView: View {
             attachmentMenuItems(localFileUrl: localFileUrl)
         } label: {
             Image(systemName: "ellipsis.circle")
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
                 .background(.ultraThinMaterial, in: Circle())

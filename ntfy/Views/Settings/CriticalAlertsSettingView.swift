@@ -26,11 +26,11 @@ struct CriticalAlertsSettingView: View {
         )) {
             HStack(spacing: 14) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.red)
+                    .foregroundStyle(.red)
                     .font(.system(size: 22))
 
                 Text("Critical Alerts")
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
         }
         .alert("Enable Critical Alerts", isPresented: $showingSettingsAlert) {

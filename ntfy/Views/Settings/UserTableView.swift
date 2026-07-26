@@ -41,7 +41,7 @@ struct UserTableView: View {
                 dialog = .edit(user)
             }) {
                 UserRowView(user: user)
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
             }
         }
         Button(action: {
@@ -51,7 +51,7 @@ struct UserTableView: View {
                 Image(systemName: "plus")
                 Text("Add user")
             }
-            .foregroundColor(.primary)
+            .foregroundStyle(.primary)
         }
     }
 }

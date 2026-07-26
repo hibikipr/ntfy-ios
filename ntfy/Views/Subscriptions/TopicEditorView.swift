@@ -35,7 +35,7 @@ struct TopicEditorView: View {
 
                     Text("Tap the field, then tap the globe/emoji key on the keyboard to pick one.")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }
@@ -46,14 +46,14 @@ struct TopicEditorView: View {
                 VStack(spacing: 8) {
                     Text("Display Name")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     TextField(subscription.displayName(), text: $displayNameText)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.center)
                         .frame(width: 220)
                     Text("Leave empty to show the default topic name.")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 32)
                 }

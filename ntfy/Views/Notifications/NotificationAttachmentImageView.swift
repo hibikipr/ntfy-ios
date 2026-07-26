@@ -52,7 +52,7 @@ struct NotificationAttachmentImageView: View {
                     ProgressView()
                     Text("Loading preview")
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
             }
     }
@@ -64,7 +64,7 @@ struct NotificationAttachmentImageView: View {
             .overlay {
                 Image(systemName: "photo")
                     .font(.title2)
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
     }
 }

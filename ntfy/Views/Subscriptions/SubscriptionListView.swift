@@ -179,19 +179,19 @@ struct SubscriptionItemRowView: View {
                         if !isDefaultServer, let baseUrl = subscription.baseUrl {
                             Text(shortUrl(url: baseUrl))
                                 .font(.caption)
-                                .foregroundColor(.gray)
+                                .foregroundStyle(.gray)
                                 .lineLimit(1)
                         }
                     }
                     Spacer()
                     Text(notificationsModel.notifications.first?.shortDateTime() ?? "")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
                 HStack {
                     Text("\(totalNotificationCount) notification\(totalNotificationCount != 1 ? "s" : "")")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     if unreadCount > 0 {
                         Spacer()
                         UnreadDotView()
@@ -222,7 +222,7 @@ struct AllNotificationsRowView: View {
                     .fill(Color.accentColor)
                     .frame(width: 40, height: 40)
                 Image(systemName: "tray.full.fill")
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .font(.system(size: 16))
             }
             VStack(alignment: .leading, spacing: 2) {
@@ -234,12 +234,12 @@ struct AllNotificationsRowView: View {
                     // notifications is already sorted by time descending
                     Text(notifications.first?.shortDateTime() ?? "")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                 }
                 HStack {
                     Text("\(notifications.count) notification\(notifications.count != 1 ? "s" : "") across \(topicCount) topic\(topicCount != 1 ? "s" : "")")
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     if unreadCount > 0 {
                         Spacer()
                         UnreadDotView()
@@ -276,7 +276,7 @@ struct TopicAvatarView: View {
             } else {
                 Text(initial)
                     .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
             }
         }
     }

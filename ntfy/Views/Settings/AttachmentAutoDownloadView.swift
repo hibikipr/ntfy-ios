@@ -32,10 +32,10 @@ struct AttachmentAutoDownloadView: View {
         } label: {
             HStack {
                 Text("Download attachments")
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(title(for: currentValue))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
             .contentShape(Rectangle())
         }

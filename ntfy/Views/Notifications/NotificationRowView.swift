@@ -48,7 +48,7 @@ struct NotificationRowView: View {
                     HStack(alignment: .center, spacing: 2) {
                         Text(notification.shortDateTime())
                             .font(.subheadline)
-                            .foregroundColor(.gray)
+                            .foregroundStyle(.gray)
                         if [1,2,4,5].contains(notification.priority) {
                             Image("priority-\(notification.priority)")
                                 .resizable()
@@ -59,7 +59,7 @@ struct NotificationRowView: View {
                     if let subscriptionLabel {
                         Text(subscriptionLabel)
                             .font(.caption)
-                            .foregroundColor(.white)
+                            .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
                             .background(Color.accentColor)
@@ -81,7 +81,7 @@ struct NotificationRowView: View {
                 if !notification.nonEmojiTags().isEmpty {
                     Text("Tags: " + notification.nonEmojiTags().joined(separator: ", "))
                         .font(.subheadline)
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                         .padding([.top], 2)
                 }
             }
@@ -153,7 +153,7 @@ struct NotificationRowView: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .foregroundColor(.gray)
+                .foregroundStyle(.gray)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
         }

@@ -96,7 +96,7 @@ struct NotificationListView: View {
                         self.activeAlert = .selected
                     }) {
                         Text("Delete")
-                            .foregroundColor(.red)
+                            .foregroundStyle(.red)
                     }
                 }
             }
@@ -141,7 +141,7 @@ struct NotificationListView: View {
             if showCopiedConfirmation {
                 Text("Copied to Clipboard")
                     .font(.body)
-                    .foregroundColor(.white)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(Color.accentColor.cornerRadius(20))

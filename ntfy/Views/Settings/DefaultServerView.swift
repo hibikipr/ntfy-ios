@@ -32,10 +32,10 @@ struct DefaultServerView: View {
             HStack {
                 let _ = newDefaultBaseUrl
                 Text("Default server")
-                    .foregroundColor(.primary)
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(shortUrl(url: defaultBaseUrl))
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
             .contentShape(Rectangle())
         }

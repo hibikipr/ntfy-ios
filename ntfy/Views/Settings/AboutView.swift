@@ -17,7 +17,7 @@ struct AboutView: View {
                     Text("Read the docs")
                     Spacer()
                     Text("ntfy.sh/docs")
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     Image(systemName: "link")
                 }
             }
@@ -28,7 +28,7 @@ struct AboutView: View {
                     Text("Report a bug")
                     Spacer()
                     Text("github.com")
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     Image(systemName: "link")
                 }
             }
@@ -39,7 +39,7 @@ struct AboutView: View {
                     Text("Rate the app")
                     Spacer()
                     Text("App Store")
-                        .foregroundColor(.gray)
+                        .foregroundStyle(.gray)
                     Image(systemName: "star.fill")
                 }
             }
@@ -47,10 +47,10 @@ struct AboutView: View {
                 Text("Version")
                 Spacer()
                 Text("ntfy \(Config.version) (\(Config.build))")
-                    .foregroundColor(.gray)
+                    .foregroundStyle(.gray)
             }
         }
-        .foregroundColor(.primary)
+        .foregroundStyle(.primary)
     }
     
     private func open(url: String) {
