@@ -62,19 +62,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
         }
     }
 
-    // TODO: Needs to be tested on multiple devices/iOS versions
     func openNotificationSettings() {
         let settingsURLString: String
         #if targetEnvironment(simulator)
         settingsURLString = UIApplication.openSettingsURLString
         #else
-        if #available(iOS 16.0, *) {
-            settingsURLString = UIApplication.openNotificationSettingsURLString
-        } else if #available(iOS 15.4, *) {
-            settingsURLString = UIApplicationOpenNotificationSettingsURLString
-        } else {
-            settingsURLString = UIApplication.openSettingsURLString
-        }
+        settingsURLString = UIApplication.openNotificationSettingsURLString
         #endif
         guard let url = URL(string: settingsURLString) else {
             return

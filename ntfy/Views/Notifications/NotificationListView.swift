@@ -183,24 +183,10 @@ struct NotificationListView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if #available(iOS 17.0, *) {
-            ContentUnavailableView {
-                Label("No notifications yet", systemImage: "bell.slash")
-            } description: {
-                Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:\n`$ curl -d \"hi\" ntfy.sh/\(subscription.topicName())`\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
-            }
-        } else {
-            VStack {
-                Text("You haven't received any notifications for this topic yet.")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom)
-
-                Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:\n`$ curl -d \"hi\" ntfy.sh/\(subscription.topicName())`\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
-                    .foregroundColor(.gray)
-            }
-            .padding(40)
+        ContentUnavailableView {
+            Label("No notifications yet", systemImage: "bell.slash")
+        } description: {
+            Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:\n`$ curl -d \"hi\" ntfy.sh/\(subscription.topicName())`\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
         }
     }
     

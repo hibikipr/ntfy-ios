@@ -70,21 +70,11 @@ struct AllNotificationsView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if #available(iOS 17.0, *) {
-            ContentUnavailableView(
-                "No notifications yet",
-                systemImage: "bell.slash",
-                description: Text("Notifications from all of your subscribed topics will show up here.")
-            )
-        } else {
-            VStack {
-                Text("You haven't received any notifications yet.")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(40)
-        }
+        ContentUnavailableView(
+            "No notifications yet",
+            systemImage: "bell.slash",
+            description: Text("Notifications from all of your subscribed topics will show up here.")
+        )
     }
 
     private func cancelAllDeliveredNotifications() {

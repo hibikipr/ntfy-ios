@@ -89,24 +89,10 @@ struct SubscriptionListView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if #available(iOS 17.0, *) {
-            ContentUnavailableView {
-                Label("No subscriptions yet", systemImage: "tray")
-            } description: {
-                Text("Tap + to subscribe to a topic. You'll get notified whenever a message is sent to it via PUT or POST.\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
-            }
-        } else {
-            VStack {
-                Text("It looks like you don't have any subscriptions yet")
-                    .font(.title2)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
-                    .padding(.bottom)
-
-                Text("Click the + to create or subscribe to a topic. Afterwards, you receive notifications on your device when sending messages via PUT or POST.\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
-                    .foregroundColor(.gray)
-            }
-            .padding(40)
+        ContentUnavailableView {
+            Label("No subscriptions yet", systemImage: "tray")
+        } description: {
+            Text("Tap + to subscribe to a topic. You'll get notified whenever a message is sent to it via PUT or POST.\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
         }
     }
 
