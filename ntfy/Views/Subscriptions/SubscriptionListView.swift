@@ -290,12 +290,10 @@ struct UnreadDotView: View {
     }
 }
 
-struct SubscriptionListView_Previews: PreviewProvider {
-    static var previews: some View {
-        let store = Store.preview // Store.previewEmpty
-        SubscriptionListView()
-            .environment(\.managedObjectContext, store.context)
-            .environmentObject(store)
-            .environmentObject(AppDelegate())
-    }
+#Preview {
+    let store = Store.preview // Store.previewEmpty
+    SubscriptionListView()
+        .environment(\.managedObjectContext, store.context)
+        .environmentObject(store)
+        .environmentObject(AppDelegate())
 }

@@ -64,12 +64,10 @@ struct SettingsView: View {
     }
 }
 
-struct SettingsView_Previews: PreviewProvider {
-    static var previews: some View {
-        let store = Store.preview // Store.previewEmpty
-        SettingsView()
-            .environment(\.managedObjectContext, store.context)
-            .environmentObject(store)
-            .environmentObject(AppDelegate())
-    }
+#Preview {
+    let store = Store.preview // Store.previewEmpty
+    SettingsView()
+        .environment(\.managedObjectContext, store.context)
+        .environmentObject(store)
+        .environmentObject(AppDelegate())
 }

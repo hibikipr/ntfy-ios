@@ -227,12 +227,9 @@ struct ErrorView: View {
     }
 }
 
-struct SubscriptionAddView_Previews: PreviewProvider {
-    @State static var isShowing = true
-    
-    static var previews: some View {
-        let store = Store.preview
-        SubscriptionAddView(isShowing: $isShowing)
-            .environmentObject(store)
-    }
+#Preview {
+    @Previewable @State var isShowing = true
+    let store = Store.preview
+    SubscriptionAddView(isShowing: $isShowing)
+        .environmentObject(store)
 }

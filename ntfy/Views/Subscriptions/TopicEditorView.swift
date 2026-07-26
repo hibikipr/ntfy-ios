@@ -89,12 +89,10 @@ struct TopicEditorView: View {
     }
 }
 
-struct TopicEditorView_Previews: PreviewProvider {
-    static var previews: some View {
-        let store = Store.preview
-        let subscription = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
-        TopicEditorView(subscription: subscription)
-            .environment(\.managedObjectContext, store.context)
-            .environmentObject(store)
-    }
+#Preview {
+    let store = Store.preview
+    let subscription = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
+    TopicEditorView(subscription: subscription)
+        .environment(\.managedObjectContext, store.context)
+        .environmentObject(store)
 }

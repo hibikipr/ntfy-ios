@@ -89,13 +89,11 @@ struct AllNotificationsView: View {
     }
 }
 
-struct AllNotificationsView_Previews: PreviewProvider {
-    static var previews: some View {
-        let store = Store.preview
-        NavigationStack {
-            AllNotificationsView()
-        }
-        .environment(\.managedObjectContext, store.context)
-        .environmentObject(store)
+#Preview {
+    let store = Store.preview
+    NavigationStack {
+        AllNotificationsView()
     }
+    .environment(\.managedObjectContext, store.context)
+    .environmentObject(store)
 }

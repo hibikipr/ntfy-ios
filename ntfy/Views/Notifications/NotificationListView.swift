@@ -285,18 +285,16 @@ struct NotificationListView: View {
     
 }
 
-struct NotificationListView_Previews: PreviewProvider {
-    static var previews: some View {
-        let store = Store.preview
-        Group {
-            let subscriptionWithNotifications = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
-            let subscriptionWithoutNotifications = store.makeSubscription(store.context, "announcements", Store.sampleMessages["announcements"]!)
-            NotificationListView(subscription: subscriptionWithNotifications)
-                .environment(\.managedObjectContext, store.context)
-                .environmentObject(store)
-            NotificationListView(subscription: subscriptionWithoutNotifications)
-                .environment(\.managedObjectContext, store.context)
-                .environmentObject(store)
-        }
+#Preview {
+    let store = Store.preview
+    Group {
+        let subscriptionWithNotifications = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
+        let subscriptionWithoutNotifications = store.makeSubscription(store.context, "announcements", Store.sampleMessages["announcements"]!)
+        NotificationListView(subscription: subscriptionWithNotifications)
+            .environment(\.managedObjectContext, store.context)
+            .environmentObject(store)
+        NotificationListView(subscription: subscriptionWithoutNotifications)
+            .environment(\.managedObjectContext, store.context)
+            .environmentObject(store)
     }
 }
