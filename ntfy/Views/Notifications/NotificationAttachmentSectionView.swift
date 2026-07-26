@@ -12,7 +12,7 @@ struct NotificationAttachmentSectionView: View {
     @ObservedObject var notification: Notification
     let attachment: MessageAttachment
     let authorizationHeader: String?
-    @ObservedObject var controller: NotificationAttachmentController
+    let controller: NotificationAttachmentController
     let onOpen: (URL) -> Void
     let onShare: (URL) -> Void
     let onSave: (URL) -> Void

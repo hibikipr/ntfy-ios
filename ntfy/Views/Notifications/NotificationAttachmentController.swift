@@ -9,10 +9,12 @@ import CoreData
 import SwiftUI
 
 @MainActor
-final class NotificationAttachmentController: ObservableObject {
-    private var downloadTask: Task<Void, Never>?
-    @Published private var activeNotificationObjectID: NSManagedObjectID?
-    @Published private var transientProgressState: AttachmentProgressState?
+@Observable
+final class NotificationAttachmentController {
+    @ObservationIgnored
+    nonisolated(unsafe) private var downloadTask: Task<Void, Never>?
+    private var activeNotificationObjectID: NSManagedObjectID?
+    private var transientProgressState: AttachmentProgressState?
 
     func progressState(for notification: Notification) -> AttachmentProgressState {
         if activeNotificationObjectID == notification.objectID, let transientProgressState {

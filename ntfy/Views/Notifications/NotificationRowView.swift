@@ -15,7 +15,7 @@ struct NotificationRowView: View {
     @ObservedObject var notification: Notification
     let onCopyMessage: () -> Void
     var subscriptionLabel: String? = nil
-    @StateObject private var attachmentController = NotificationAttachmentController()
+    @State private var attachmentController = NotificationAttachmentController()
     @State private var attachmentPresentation: AttachmentPresentation?
 
     var body: some View {
