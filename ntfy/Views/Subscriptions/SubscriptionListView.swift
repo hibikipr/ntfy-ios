@@ -34,7 +34,7 @@ struct SubscriptionListView: View {
                     }
                 }
         }
-        .onChange(of: delegate.selectedBaseUrl) { newValue in
+        .onChange(of: delegate.selectedBaseUrl) { _, newValue in
             guard
                 let newValue,
                 let subscription = subscriptionsModel.subscriptions.first(where: { $0.urlString() == newValue })

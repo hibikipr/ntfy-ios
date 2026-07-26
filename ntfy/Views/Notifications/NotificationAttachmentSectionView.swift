@@ -106,10 +106,10 @@ struct NotificationAttachmentSectionView: View {
         .onAppear {
             syncPreparingAutoDownloadState(resolvedLocalFileUrl: resolvedLocalFileUrl)
         }
-        .onChange(of: resolvedLocalFileUrl?.path ?? "") { _ in
+        .onChange(of: resolvedLocalFileUrl?.path ?? "") {
             syncPreparingAutoDownloadState(resolvedLocalFileUrl: resolvedLocalFileUrl)
         }
-        .onChange(of: currentProgressState.persistedValue) { _ in
+        .onChange(of: currentProgressState.persistedValue) {
             syncPreparingAutoDownloadState(resolvedLocalFileUrl: resolvedLocalFileUrl)
         }
         .task(id: attachmentAutoDownloadKey(resolvedLocalFileUrl: resolvedLocalFileUrl)) {

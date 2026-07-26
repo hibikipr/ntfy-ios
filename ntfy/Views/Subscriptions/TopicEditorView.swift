@@ -26,7 +26,7 @@ struct TopicEditorView: View {
                         .font(.system(size: 32))
                         .textFieldStyle(.roundedBorder)
                         .frame(width: 120)
-                        .onChange(of: iconText) { newValue in
+                        .onChange(of: iconText) { _, newValue in
                             if let last = newValue.last {
                                 iconText = String(last)
                             }
