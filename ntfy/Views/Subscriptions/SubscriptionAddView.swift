@@ -144,7 +144,8 @@ struct SubscriptionAddView: View {
         loading = true
         addError = nil
         let user = store.getUser(baseUrl: selectedBaseUrl)?.toBasicUser()
-        ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user) { result in
+        Task {
+            let result = await ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user)
             switch result {
             case .Success:
                 DispatchQueue.global(qos: .background).async {
@@ -171,7 +172,8 @@ struct SubscriptionAddView: View {
         loading = true
         loginError = nil
         let user = BasicUser(username: username, password: password)
-        ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user) { result in
+        Task {
+            let result = await ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user)
             switch result {
             case .Success:
                 DispatchQueue.global(qos: .background).async {

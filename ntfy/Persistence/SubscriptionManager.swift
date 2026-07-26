@@ -19,7 +19,9 @@ struct SubscriptionManager {
             }
         }
         let subscription = store.saveSubscription(baseUrl: normalizedBaseUrl, topic: topic)
-        poll(subscription, notifyOnNewMessages: false)
+        Task {
+            await poll(subscription, notifyOnNewMessages: false)
+        }
     }
     
     func unsubscribe(_ subscription: Subscription) {
@@ -39,39 +41,36 @@ struct SubscriptionManager {
         }
     }
     
-    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true) {
-        poll(subscription, notifyOnNewMessages: notifyOnNewMessages) { _ in }
-    }
-
-    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true, completionHandler: @escaping ([Message]) -> Void) {
+    @discardableResult
+    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true) async -> [Message] {
         // This is a bit of a hack but it prevents us from polling dead subscriptions
-        if (subscription.baseUrl == nil) {
+        guard subscription.baseUrl != nil else {
             Log.d(tag, "Attempting to poll dead subscription failed")
-            completionHandler([])
-            return
+            return []
         }
 
         let user = store.getUser(baseUrl: subscription.baseUrl!)?.toBasicUser()
         Log.d(tag, "Polling from \(subscription.urlString()) with user \(user != nil ? "<redacted>" : "anonymous")")
-        ApiService.shared.poll(subscription: subscription, user: user) { messages, error in
-            guard let messages = messages else {
-                Log.e(tag, "Polling failed", error)
-                completionHandler([])
-                return
-            }
-            Log.d(tag, "Polling success, \(messages.count) new message(s)", messages)
-            guard !messages.isEmpty else {
-                completionHandler([])
-                return
-            }
-            let newMessages = store.save(notificationsFromMessages: messages, withSubscription: subscription)
-            guard notifyOnNewMessages, !newMessages.isEmpty, let baseUrl = subscription.baseUrl else {
-                completionHandler(newMessages)
-                return
-            }
+        let messages: [Message]
+        do {
+            messages = try await ApiService.shared.poll(subscription: subscription, user: user)
+        } catch {
+            Log.e(tag, "Polling failed", error)
+            return []
+        }
+        Log.d(tag, "Polling success, \(messages.count) new message(s)", messages)
+        guard !messages.isEmpty else {
+            return []
+        }
+        let newMessages = store.save(notificationsFromMessages: messages, withSubscription: subscription)
+        guard notifyOnNewMessages, !newMessages.isEmpty, let baseUrl = subscription.baseUrl else {
+            return newMessages
+        }
+        await withCheckedContinuation { continuation in
             LocalNotificationPoster.showSequentially(baseUrl: baseUrl, messages: newMessages) {
-                completionHandler(newMessages)
+                continuation.resume()
             }
         }
+        return newMessages
     }
 }

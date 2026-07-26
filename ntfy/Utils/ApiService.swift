@@ -6,50 +6,29 @@ class ApiService {
     
     private let tag = "ApiService"
     
-    func poll(subscription: Subscription, user: BasicUser?, completionHandler: @escaping ([Message]?, Error?) -> Void) {
+    func poll(subscription: Subscription, user: BasicUser?) async throws -> [Message] {
         guard let url = URL(string: subscription.urlString()) else {
-            completionHandler(nil, URLError(.badURL))
-            return
+            throw URLError(.badURL)
         }
         let since = subscription.lastNotificationId ?? "all"
         let urlString = "\(url)/json?poll=1&since=\(since)"
-        
+
         Log.d(tag, "Polling from \(urlString) with user \(user != nil ? "<redacted>" : "anonymous")")
-        fetchJsonData(urlString: urlString, user: user, completionHandler: completionHandler)
-    }
-    
-    func poll(subscription: Subscription, messageId: String, user: BasicUser?, completionHandler: @escaping (Message?, Error?) -> Void) {
-        poll(baseUrl: subscription.baseUrl ?? "?", topic: subscription.topic ?? "?", messageId: messageId, user: user, completionHandler: completionHandler)
+        return try await fetchJsonData(urlString: urlString, user: user)
     }
 
-    func poll(baseUrl: String, topic: String, messageId: String, user: BasicUser?, completionHandler: @escaping (Message?, Error?) -> Void) {
+    func poll(baseUrl: String, topic: String, messageId: String, user: BasicUser?) async throws -> Message {
         guard let url = URL(string: "\(topicUrl(baseUrl: baseUrl, topic: topic))/json?poll=1&id=\(messageId)") else {
-            completionHandler(nil, URLError(.badURL))
-            return
+            throw URLError(.badURL)
         }
         Log.d(tag, "Polling single message from \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
-        
+
         let request = newRequest(url: url, user: user)
-        newSession(timeout: 30).dataTask(with: request) { (data, response, error) in
-            if let error = error {
-                completionHandler(nil, error)
-                return
-            }
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-                completionHandler(nil, URLError(.badServerResponse))
-                return
-            }
-            guard let data = data else {
-                completionHandler(nil, URLError(.badServerResponse))
-                return
-            }
-            do {
-                let message = try JSONDecoder().decode(Message.self, from: data)
-                completionHandler(message, nil)
-            } catch {
-                completionHandler(nil, error)
-            }
-        }.resume()
+        let (data, response) = try await newSession(timeout: 30).data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        return try JSONDecoder().decode(Message.self, from: data)
     }
 
     func publish(
@@ -58,95 +37,88 @@ class ApiService {
         message: String,
         title: String,
         priority: Int = 3,
-        tags: [String] = [],
-        completionHandler: (() -> Void)? = nil
-    ) {
-        guard let url = URL(string: subscription.urlString()) else { return }
+        tags: [String] = []
+    ) async throws {
+        guard let url = URL(string: subscription.urlString()) else {
+            throw URLError(.badURL)
+        }
         var request = newRequest(url: url, user: user)
 
         Log.d(tag, "Publishing to \(url)")
-        
+
         request.httpMethod = "POST"
         request.setValue(title, forHTTPHeaderField: "Title")
         request.setValue(String(priority), forHTTPHeaderField: "Priority")
         request.setValue(tags.joined(separator: ","), forHTTPHeaderField: "Tags")
         request.httpBody = message.data(using: String.Encoding.utf8)
-        newSession(timeout: 10).dataTask(with: request) { (data, response, error) in
-            guard error == nil else {
-                Log.e(self.tag, "Error publishing message", error!)
-                return
-            }
-            Log.d(self.tag, "Publishing message succeeded", response)
-            completionHandler?()
-        }.resume()
-    }
-    
-    func checkAuth(baseUrl: String, topic: String, user: BasicUser?, completionHandler: @escaping(AuthResult) -> Void) {
-        guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else { return }
-        let request = newRequest(url: url, user: user)
-        Log.d(tag, "Checking auth for \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
-        newSession(timeout: 10).dataTask(with: request) { (data, response, error) in
-            if let error = error {
-                Log.e(self.tag, "Error checking auth: \(error)")
-                completionHandler(.Error(error.localizedDescription))
-            } else if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode != 200 {
-                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
-                    completionHandler(.Unauthorized)
-                } else {
-                    completionHandler(.Error("Unexpected response from server: \(httpResponse.statusCode)"))
-                }
-            } else if let data = data {
-                do {
-                    let result = try JSONDecoder().decode(AuthCheckResponse.self, from: data)
-                    Log.d(self.tag, "Auth result: \(result)")
-                    if result.success == true {
-                        completionHandler(.Success)
-                    } else {
-                        completionHandler(.Error("Unexpected response from server"))
-                    }
-                } catch {
-                    Log.e(self.tag, "Error handling auth response: \(error)")
-                    completionHandler(.Error("Unexpected response from server. Is this a ntfy server?"))
-                }
-            }
-        }.resume()
+        do {
+            let (_, response) = try await newSession(timeout: 10).data(for: request)
+            Log.d(tag, "Publishing message succeeded", response)
+        } catch {
+            Log.e(tag, "Error publishing message", error)
+            throw error
+        }
     }
 
-    private func fetchJsonData<T: Decodable>(urlString: String, user: BasicUser?, completionHandler: @escaping ([T]?, Error?) -> ()) {
-        guard let url = URL(string: urlString) else {
-            completionHandler(nil, URLError(.badURL))
-            return
+    func checkAuth(baseUrl: String, topic: String, user: BasicUser?) async -> AuthResult {
+        guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else {
+            return .Error("Invalid URL")
         }
         let request = newRequest(url: url, user: user)
-        newSession(timeout: 30).dataTask(with: request) { (data, response, error) in
-            if let error {
-                Log.e(self.tag, "Error fetching data", error)
-                completionHandler(nil, error)
-                return
+        Log.d(tag, "Checking auth for \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
+        do {
+            let (data, response) = try await newSession(timeout: 10).data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return .Error("Unexpected response from server")
             }
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-                completionHandler(nil, URLError(.badServerResponse))
-                return
-            }
-            guard let data = data else {
-                completionHandler(nil, URLError(.badServerResponse))
-                return
+            if httpResponse.statusCode != 200 {
+                if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
+                    return .Unauthorized
+                } else {
+                    return .Error("Unexpected response from server: \(httpResponse.statusCode)")
+                }
             }
             do {
-                let lines = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline)
-                var notifications: [T] = []
-                for jsonLine in lines {
-                    guard let jsonData = jsonLine.data(using: .utf8) else {
-                        throw URLError(.cannotDecodeContentData)
-                    }
-                    notifications.append(try JSONDecoder().decode(T.self, from: jsonData))
+                let result = try JSONDecoder().decode(AuthCheckResponse.self, from: data)
+                Log.d(tag, "Auth result: \(result)")
+                if result.success == true {
+                    return .Success
+                } else {
+                    return .Error("Unexpected response from server")
                 }
-                completionHandler(notifications, nil)
             } catch {
-                Log.e(self.tag, "Error fetching data", error)
-                completionHandler(nil, error)
+                Log.e(tag, "Error handling auth response: \(error)")
+                return .Error("Unexpected response from server. Is this a ntfy server?")
             }
-        }.resume()
+        } catch {
+            Log.e(tag, "Error checking auth: \(error)")
+            return .Error(error.localizedDescription)
+        }
+    }
+
+    private func fetchJsonData<T: Decodable>(urlString: String, user: BasicUser?) async throws -> [T] {
+        guard let url = URL(string: urlString) else {
+            throw URLError(.badURL)
+        }
+        let request = newRequest(url: url, user: user)
+        do {
+            let (data, response) = try await newSession(timeout: 30).data(for: request)
+            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+                throw URLError(.badServerResponse)
+            }
+            let lines = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline)
+            var notifications: [T] = []
+            for jsonLine in lines {
+                guard let jsonData = jsonLine.data(using: .utf8) else {
+                    throw URLError(.cannotDecodeContentData)
+                }
+                notifications.append(try JSONDecoder().decode(T.self, from: jsonData))
+            }
+            return notifications
+        } catch {
+            Log.e(tag, "Error fetching data", error)
+            throw error
+        }
     }
     
     private func newRequest(url: URL, user: BasicUser?) -> URLRequest {

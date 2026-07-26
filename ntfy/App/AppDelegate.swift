@@ -109,26 +109,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate, ObservableObject {
             return
         }
 
-        let group = DispatchGroup()
-        let resultQueue = DispatchQueue(label: "io.heckel.ntfy.background-poll-result")
-        var didReceiveNewData = false
-        subscriptions.forEach { subscription in
-            group.enter()
-            guard subscription.baseUrl != nil else {
-                Log.w(tag, "Skipping background poll notification for subscription with missing baseUrl")
-                group.leave()
-                return
-            }
-            subscriptionManager.poll(subscription) { newMessages in
-                if !newMessages.isEmpty {
-                    resultQueue.sync {
+        Task {
+            var didReceiveNewData = false
+            await withTaskGroup(of: Bool.self) { group in
+                for subscription in subscriptions {
+                    guard subscription.baseUrl != nil else {
+                        Log.w(tag, "Skipping background poll notification for subscription with missing baseUrl")
+                        continue
+                    }
+                    group.addTask {
+                        let newMessages = await subscriptionManager.poll(subscription)
+                        return !newMessages.isEmpty
+                    }
+                }
+                for await hasNewData in group {
+                    if hasNewData {
                         didReceiveNewData = true
                     }
                 }
-                group.leave()
             }
-        }
-        group.notify(queue: .main) {
             completionHandler(didReceiveNewData ? .newData : .noData)
         }
     }

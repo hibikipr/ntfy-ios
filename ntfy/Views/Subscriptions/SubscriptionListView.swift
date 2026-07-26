@@ -61,7 +61,7 @@ struct SubscriptionListView: View {
         }
         .listStyle(.insetGrouped)
         .refreshable {
-            pollSubscriptions()
+            await pollSubscriptions()
         }
         .navigationTitle("Subscribed topics")
         .toolbar {
@@ -83,7 +83,9 @@ struct SubscriptionListView: View {
         }
         .onAppear {
             // Ensures subscription count stays up to date, so a pull to refresh isn't required
-            pollSubscriptions()
+            Task {
+                await pollSubscriptions()
+            }
         }
     }
 
@@ -96,9 +98,9 @@ struct SubscriptionListView: View {
         }
     }
 
-    private func pollSubscriptions() {
-        subscriptionsModel.subscriptions.forEach { subscription in
-            subscriptionManager.poll(subscription)
+    private func pollSubscriptions() async {
+        for subscription in subscriptionsModel.subscriptions {
+            await subscriptionManager.poll(subscription)
         }
     }
 }

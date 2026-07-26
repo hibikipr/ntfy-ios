@@ -36,7 +36,7 @@ struct NotificationListView: View {
     var body: some View {
         notificationList
             .refreshable {
-                subscriptionManager.poll(subscription)
+                await subscriptionManager.poll(subscription)
             }
     }
     
@@ -219,16 +219,19 @@ struct NotificationListView: View {
         let tags = Array(possibleTags.shuffled().prefix(Int.random(in: 0..<4)))
 
         let user = store.getUser(baseUrl: baseUrl)?.toBasicUser()
-        ApiService.shared.publish(
-            subscription: subscription,
-            user: user,
-            message: "This is a test notification from the ntfy iOS app. It has a priority of \(priority). If you send another one, it may look different.",
-            title: "Test: You can set a title if you like",
-            priority: priority,
-            tags: tags
-        ) {
-            DispatchQueue.main.async {
-                subscriptionManager.poll(subscription)
+        Task {
+            do {
+                try await ApiService.shared.publish(
+                    subscription: subscription,
+                    user: user,
+                    message: "This is a test notification from the ntfy iOS app. It has a priority of \(priority). If you send another one, it may look different.",
+                    title: "Test: You can set a title if you like",
+                    priority: priority,
+                    tags: tags
+                )
+                await subscriptionManager.poll(subscription)
+            } catch {
+                Log.e(tag, "Error sending test notification", error)
             }
         }
     }

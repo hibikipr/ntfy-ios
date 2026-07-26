@@ -64,7 +64,7 @@ struct AllNotificationsView: View {
             cancelAllDeliveredNotifications()
         }
         .refreshable {
-            pollAllSubscriptions()
+            await pollAllSubscriptions()
         }
     }
 
@@ -81,10 +81,10 @@ struct AllNotificationsView: View {
         UNUserNotificationCenter.current().removeAllDeliveredNotifications()
     }
 
-    private func pollAllSubscriptions() {
+    private func pollAllSubscriptions() async {
         let subscriptionManager = SubscriptionManager(store: store)
-        store.getSubscriptions()?.forEach { subscription in
-            subscriptionManager.poll(subscription)
+        for subscription in store.getSubscriptions() ?? [] {
+            await subscriptionManager.poll(subscription)
         }
     }
 }
