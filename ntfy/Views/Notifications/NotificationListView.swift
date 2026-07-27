@@ -84,8 +84,8 @@ struct NotificationListView: View {
                             self.activeAlert = .unsubscribe
                         }
                     } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .padding([.leading], 40)
+                        Label("More", systemImage: "ellipsis.circle")
+                            .labelStyle(.iconOnly)
                     }
                 }
             }
@@ -186,7 +186,19 @@ struct NotificationListView: View {
         ContentUnavailableView {
             Label("No notifications yet", systemImage: "bell.slash")
         } description: {
-            Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:\n`$ curl -d \"hi\" ntfy.sh/\(subscription.topicName())`\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
+            VStack(spacing: 12) {
+                Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:")
+
+                HStack(alignment: .top, spacing: 4) {
+                    Text("$")
+                    Text("curl -d \"hi\" \(subscription.urlString())")
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .font(.system(.body, design: .monospaced))
+
+                Text("Detailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs).")
+            }
         }
     }
     

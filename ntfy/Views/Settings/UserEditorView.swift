@@ -72,8 +72,8 @@ struct UserEditorView: View {
                                 Text("Delete")
                             }
                         } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .padding([.leading], 40)
+                            Label("More", systemImage: "ellipsis.circle")
+                                .labelStyle(.iconOnly)
                         }
                     }
                 }
