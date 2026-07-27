@@ -1,0 +1,79 @@
+import SwiftUI
+
+struct AppIconPickerView: View {
+    private let tag = "AppIconPickerView"
+
+    @State private var showDialog = false
+    @State private var currentIcon: AppIconOption = AppIconOption.current()
+
+    var body: some View {
+        Button(action: { showDialog = true }) {
+            HStack {
+                Text("App Icon")
+                    .foregroundStyle(.primary)
+                Spacer()
+                Text(currentIcon.displayName)
+                    .foregroundStyle(.gray)
+            }
+            .contentShape(Rectangle())
+        }
+        .sheet(isPresented: $showDialog) {
+            NavigationStack {
+                List {
+                    row(for: .classic)
+                    row(for: .orange)
+                    row(for: .green)
+                }
+                .navigationTitle("App Icon")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Done") {
+                            showDialog = false
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(for option: AppIconOption) -> some View {
+        Button(action: { selectIcon(option) }) {
+            HStack(spacing: 16) {
+                Image(option.previewImageName)
+                    .resizable()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text(option.displayName)
+                    .foregroundStyle(.primary)
+                Spacer()
+                if option == currentIcon {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(Color.accentColor)
+                }
+            }
+        }
+    }
+
+    private func selectIcon(_ option: AppIconOption) {
+        guard option != currentIcon else {
+            showDialog = false
+            return
+        }
+        UIApplication.shared.setAlternateIconName(option.iconName) { error in
+            if let error {
+                Log.e(tag, "Failed to set alternate icon to \(option.rawValue)", error)
+                return
+            }
+            currentIcon = option
+        }
+        showDialog = false
+    }
+}
+
+#Preview {
+    Form {
+        AppIconPickerView()
+    }
+}

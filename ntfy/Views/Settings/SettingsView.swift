@@ -17,6 +17,12 @@ struct SettingsView: View {
                     DefaultServerView()
                 }
                 Section(
+                    header: Text("Appearance"),
+                    footer: Text("Choose an alternate app icon.")
+                ) {
+                    AppIconPickerView()
+                }
+                Section(
                     header: Text("Notifications"),
                     footer: Text("Automatically download attachments up to the selected size. Attachments larger than this limit must be downloaded manually.")
                 ) {

@@ -10,6 +10,7 @@
 		02024E60283D7CBB0064224A /* Extensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02024E5F283D7CBB0064224A /* Extensions.swift */; };
 		0DCB5CEC6E2932E1CF7233F7 /* AllNotificationsObservable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DA38E1571685600864FEC94 /* AllNotificationsObservable.swift */; };
 		0E323F2D6E3296F12D40E1AF /* LocalNotificationPoster.swift in Sources */ = {isa = PBXBuildFile; fileRef = B442C0DC83CB8BFE0CBC891D /* LocalNotificationPoster.swift */; };
+		16C6D248BD5824E13999EDD8 /* AppIconPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46BD4792D9C3230E14A8622D /* AppIconPickerView.swift */; };
 		18A28C5C2FBCF00000A52946 /* AttachmentAutoDownloadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18A28C5B2FBCF00000A52946 /* AttachmentAutoDownloadView.swift */; };
 		23F76ABB698628AD44DCAEDC /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8A765B8F3A4D2AA84D03DE3C /* Foundation.framework */; };
 		258B5053A8C14C1477993609 /* TopicEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBE8DE340E147766BAA25874 /* TopicEditorView.swift */; };
@@ -73,6 +74,7 @@
 		94CD196A283E666900973B93 /* EmojiManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94CD1969283E666900973B93 /* EmojiManager.swift */; };
 		94CD196B283E666900973B93 /* EmojiManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94CD1969283E666900973B93 /* EmojiManager.swift */; };
 		94E9196C28353E0100F30170 /* Log.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474F216283531A200CDE4DD /* Log.swift */; };
+		AD9B0E1AD003187C01D1478B /* AppIconOption.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */; };
 		B4B2732017BB9C3BBC9FD25B /* DiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4EFD9D8A3A9A3D69297848DE /* DiagnosticsView.swift */; };
 		BA4C5998E4131F9FDC17B8C4 /* MessageParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E01C1F54CA6589520BC421F9 /* MessageParsingTests.swift */; };
 		E27008102AF0F64B006E33BA /* SubscriptionsObservable.swift in Sources */ = {isa = PBXBuildFile; fileRef = E270080F2AF0F64B006E33BA /* SubscriptionsObservable.swift */; };
@@ -133,6 +135,7 @@
 		29E841A22FB417EA00F927E4 /* NotificationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationListView.swift; sourceTree = "<group>"; };
 		29E841A32FB417EA00F927E4 /* NotificationRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRowView.swift; sourceTree = "<group>"; };
 		2DA38E1571685600864FEC94 /* AllNotificationsObservable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotificationsObservable.swift; sourceTree = "<group>"; };
+		46BD4792D9C3230E14A8622D /* AppIconPickerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIconPickerView.swift; sourceTree = "<group>"; };
 		4EFD9D8A3A9A3D69297848DE /* DiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsView.swift; sourceTree = "<group>"; };
 		629C58C52864F45D40E2D286 /* LogExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogExporter.swift; sourceTree = "<group>"; };
 		650E08CD6C3D68995043F400 /* ntfyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ntfyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -172,6 +175,7 @@
 		E01C1F54CA6589520BC421F9 /* MessageParsingTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MessageParsingTests.swift; path = MessageParsingTests.swift; sourceTree = "<group>"; };
 		E270080F2AF0F64B006E33BA /* SubscriptionsObservable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubscriptionsObservable.swift; sourceTree = "<group>"; };
 		E27008112AF1030A006E33BA /* NotificationsObservable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsObservable.swift; sourceTree = "<group>"; };
+		ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIconOption.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -213,6 +217,8 @@
 				2939B2122F8F293C00A52946 /* UserEditorView.swift */,
 				2939B2132F8F293C00A52946 /* UserRowView.swift */,
 				2939B2142F8F293C00A52946 /* UserTableView.swift */,
+				ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */,
+				46BD4792D9C3230E14A8622D /* AppIconPickerView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -569,6 +575,8 @@
 				29E841AA2FB417EA00F927E4 /* NotificationAttachmentSectionView.swift in Sources */,
 				29E841AB2FB417EA00F927E4 /* NotificationListView.swift in Sources */,
 				9407EDDA284ADE1F00C1C334 /* User.swift in Sources */,
+				AD9B0E1AD003187C01D1478B /* AppIconOption.swift in Sources */,
+				16C6D248BD5824E13999EDD8 /* AppIconPickerView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -759,6 +767,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Orange AppIcon-Green";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ntfy/ntfy.entitlements;
@@ -794,6 +803,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES = "AppIcon-Orange AppIcon-Green";
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = ntfy/ntfy.entitlements;
