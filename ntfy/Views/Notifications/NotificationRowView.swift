@@ -45,6 +45,13 @@ struct NotificationRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
+                    if !notification.isRead {
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 8, height: 8)
+                            .padding(.top, 4)
+                            .accessibilityLabel("Unread")
+                    }
                     HStack(alignment: .center, spacing: 2) {
                         Text(notification.shortDateTime())
                             .font(.subheadline)
