@@ -28,7 +28,7 @@ struct NotificationRowView: View {
                     Label("Delete", systemImage: "trash.circle")
                 }
             }
-            .onAppear {
+            .onDisappear {
                 store.markRead(notification)
             }
             .sheet(item: $attachmentPresentation) { attachmentPresentation in
