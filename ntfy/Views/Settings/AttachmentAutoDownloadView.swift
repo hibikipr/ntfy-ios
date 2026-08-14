@@ -5,6 +5,7 @@
 //  Created by Alek Michelson on 5/18/26.
 //
 
+import CoreData
 import SwiftUI
 
 private struct AttachmentAutoDownloadOption: Identifiable {

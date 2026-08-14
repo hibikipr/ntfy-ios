@@ -5,6 +5,7 @@
 //  Created by Alek Michelson on 6/8/26.
 //
 
+import CoreData
 import SwiftUI
 
 struct CriticalAlertsSettingView: View {

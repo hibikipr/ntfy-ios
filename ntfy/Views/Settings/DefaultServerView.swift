@@ -5,6 +5,7 @@
 //  Created by Alek Michelson on 4/10/26.
 //
 
+import CoreData
 import SwiftUI
 
 struct DefaultServerView: View {
