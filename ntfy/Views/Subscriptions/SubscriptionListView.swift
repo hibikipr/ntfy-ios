@@ -28,7 +28,7 @@ struct SubscriptionListView: View {
                 .navigationDestination(for: NotificationsRoute.self) { route in
                     switch route {
                     case .all:
-                        AllNotificationsView()
+                        AllNotificationsView(notificationsModel: allNotificationsModel)
                     case .topic(let subscription):
                         NotificationListView(subscription: subscription)
                     }

@@ -5,18 +5,19 @@ struct AllNotificationsView: View {
     private let tag = "AllNotificationsView"
 
     @EnvironmentObject private var store: Store
-    @StateObject var notificationsModel = AllNotificationsObservable()
+    @ObservedObject var notificationsModel: AllNotificationsObservable
 
     @State private var searchText = ""
+    @State private var debouncedSearchText = ""
     @State private var showClearAllAlert = false
 
     private var filteredNotifications: [Notification] {
-        guard !searchText.isEmpty else {
+        guard !debouncedSearchText.isEmpty else {
             return notificationsModel.notifications
         }
         return notificationsModel.notifications.filter {
-            $0.formatMessage().localizedCaseInsensitiveContains(searchText) ||
-            ($0.formatTitle()?.localizedCaseInsensitiveContains(searchText) ?? false)
+            $0.formatMessage().localizedCaseInsensitiveContains(debouncedSearchText) ||
+            ($0.formatTitle()?.localizedCaseInsensitiveContains(debouncedSearchText) ?? false)
         }
     }
 
@@ -32,6 +33,11 @@ struct AllNotificationsView: View {
         }
         .listStyle(.insetGrouped)
         .searchable(text: $searchText, prompt: "Search notifications")
+        .task(id: searchText) {
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
+            debouncedSearchText = searchText
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -96,7 +102,7 @@ struct AllNotificationsView: View {
 #Preview {
     let store = Store.preview
     NavigationStack {
-        AllNotificationsView()
+        AllNotificationsView(notificationsModel: AllNotificationsObservable())
     }
     .environment(\.managedObjectContext, store.context)
     .environmentObject(store)

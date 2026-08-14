@@ -2,6 +2,10 @@ import Foundation
 import UserNotifications
 
 extension UNMutableNotificationContent {
+    /// Reused across notification banner image downloads within a process's lifetime instead of
+    /// constructing a fresh `URLSession` per notification.
+    private static let notificationImageSession = URLSession(configuration: .ephemeral)
+
     func modify(message: Message, baseUrl: String) {
         // Body and title
         if let body = message.message {
@@ -100,17 +104,13 @@ extension UNMutableNotificationContent {
             return
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: 20)
         request.setValue(ApiService.userAgent, forHTTPHeaderField: "User-Agent")
         if let user = user {
             request.setValue(user.toHeader(), forHTTPHeaderField: "Authorization")
         }
 
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 20
-        config.timeoutIntervalForResource = 20
-
-        URLSession(configuration: config).downloadTask(with: request) { tempUrl, response, _ in
+        Self.notificationImageSession.downloadTask(with: request) { tempUrl, response, _ in
             guard
                 let tempUrl,
                 let httpResponse = response as? HTTPURLResponse,

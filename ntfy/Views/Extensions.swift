@@ -39,6 +39,9 @@ extension Notification {
     }
 }
 
+/// Reused across every call instead of being rebuilt per notification row render.
+private let bareUrlDetector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+
 /// Detects URLs (e.g. `https://ntfy.sh`) in the text and turns them into tappable links, without
 /// overriding links already present — e.g. those produced by Markdown `[text](url)` syntax. Used
 /// for both the plain-text and Markdown rendering paths.
@@ -46,7 +49,7 @@ private func linkifyBareUrls(in attributed: inout AttributedString) {
     let plain = String(attributed.characters)
     guard
         !plain.isEmpty,
-        let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue)
+        let detector = bareUrlDetector
     else { return }
 
     let nsRange = NSRange(plain.startIndex..<plain.endIndex, in: plain)

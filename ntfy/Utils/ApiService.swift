@@ -3,9 +3,21 @@ import Foundation
 class ApiService {
     static let shared = ApiService()
     static let userAgent = "ntfy/\(Config.version) (build \(Config.build); iOS \(Config.osVersion))"
-    
+
     private let tag = "ApiService"
-    
+
+    /// Reused across every request instead of constructing a new `URLSession` per call, so
+    /// repeated calls to the same server (e.g. polling many subscriptions) can reuse persistent
+    /// connections instead of paying full connection setup each time. Per-request timeouts are
+    /// set on the individual `URLRequest` via `newRequest(url:user:timeout:)`, which overrides
+    /// this session's defaults.
+    private static let session: URLSession = {
+        let configuration = URLSessionConfiguration.default
+        configuration.timeoutIntervalForRequest = 30
+        configuration.timeoutIntervalForResource = 30
+        return URLSession(configuration: configuration)
+    }()
+
     func poll(subscription: Subscription, user: BasicUser?) async throws -> [Message] {
         guard let url = URL(string: subscription.urlString()) else {
             throw URLError(.badURL)
@@ -23,8 +35,8 @@ class ApiService {
         }
         Log.d(tag, "Polling single message from \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
 
-        let request = newRequest(url: url, user: user)
-        let (data, response) = try await newSession(timeout: 30).data(for: request)
+        let request = newRequest(url: url, user: user, timeout: 30)
+        let (data, response) = try await Self.session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
             throw URLError(.badServerResponse)
         }
@@ -42,7 +54,7 @@ class ApiService {
         guard let url = URL(string: subscription.urlString()) else {
             throw URLError(.badURL)
         }
-        var request = newRequest(url: url, user: user)
+        var request = newRequest(url: url, user: user, timeout: 10)
 
         Log.d(tag, "Publishing to \(url)")
 
@@ -52,7 +64,7 @@ class ApiService {
         request.setValue(tags.joined(separator: ","), forHTTPHeaderField: "Tags")
         request.httpBody = message.data(using: String.Encoding.utf8)
         do {
-            let (_, response) = try await newSession(timeout: 10).data(for: request)
+            let (_, response) = try await Self.session.data(for: request)
             Log.d(tag, "Publishing message succeeded", response)
         } catch {
             Log.e(tag, "Error publishing message", error)
@@ -64,10 +76,10 @@ class ApiService {
         guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else {
             return .Error("Invalid URL")
         }
-        let request = newRequest(url: url, user: user)
+        let request = newRequest(url: url, user: user, timeout: 10)
         Log.d(tag, "Checking auth for \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
         do {
-            let (data, response) = try await newSession(timeout: 10).data(for: request)
+            let (data, response) = try await Self.session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
                 return .Error("Unexpected response from server")
             }
@@ -100,9 +112,9 @@ class ApiService {
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
         }
-        let request = newRequest(url: url, user: user)
+        let request = newRequest(url: url, user: user, timeout: 30)
         do {
-            let (data, response) = try await newSession(timeout: 30).data(for: request)
+            let (data, response) = try await Self.session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
                 throw URLError(.badServerResponse)
             }
@@ -121,20 +133,13 @@ class ApiService {
         }
     }
     
-    private func newRequest(url: URL, user: BasicUser?) -> URLRequest {
-        var request = URLRequest(url: url)
+    private func newRequest(url: URL, user: BasicUser?, timeout: TimeInterval) -> URLRequest {
+        var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue(ApiService.userAgent, forHTTPHeaderField: "User-Agent")
         if let user = user {
             request.setValue(user.toHeader(), forHTTPHeaderField: "Authorization")
         }
         return request
-    }
-    
-    private func newSession(timeout: TimeInterval) -> URLSession {
-        let sessionConfig = URLSessionConfiguration.default
-        sessionConfig.timeoutIntervalForRequest = timeout
-        sessionConfig.timeoutIntervalForResource = timeout
-        return URLSession(configuration: sessionConfig)
     }
 }
 

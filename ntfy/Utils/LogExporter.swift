@@ -25,6 +25,7 @@ enum LogExporter {
         for url in [Log.appLogFileURL, Log.extensionLogFileURL] {
             try? "".write(to: url, atomically: true, encoding: .utf8)
         }
+        Log.invalidateCachedHandleAfterExternalWrite()
     }
 
     private static func lines(from fileURL: URL) -> [String] {

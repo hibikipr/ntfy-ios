@@ -7,6 +7,7 @@ class AllNotificationsObservable: NSObject, ObservableObject {
     private lazy var fetchedResultsController: NSFetchedResultsController<Notification> = {
         let fetchRequest: NSFetchRequest<Notification> = Notification.fetchRequest()
         fetchRequest.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
+        fetchRequest.fetchBatchSize = 50
 
         let controller = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: Store.shared.context, sectionNameKeyPath: nil, cacheName: nil)
         controller.delegate = self

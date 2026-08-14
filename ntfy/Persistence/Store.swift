@@ -42,6 +42,10 @@ class Store: ObservableObject {
         return container.viewContext
     }
     private var cancellables: Set<AnyCancellable> = []
+    /// Unread count across every subscription, kept in sync by `syncBadgeCount()`. Views (e.g. the
+    /// tab bar badge) can observe this directly instead of standing up their own fetch of every
+    /// notification just to derive a count.
+    @Published private(set) var unreadCount: Int = 0
 
     init(inMemory: Bool = false) {
         let storeUrl = (inMemory) ? URL(fileURLWithPath: "/dev/null") : FileManager.default
@@ -80,6 +84,8 @@ class Store: ObservableObject {
               }
           }
           .store(in: &cancellables)
+
+        unreadCount = unreadNotificationCount()
     }
     
     func rollbackAndRefresh() {
@@ -95,7 +101,12 @@ class Store: ObservableObject {
         // `refreshAllObjects` only refreshes objects from which the cache is invalid. With a staleness intervall of -1 the cache never invalidates.
         // We set the `stalenessInterval` to 0 to make sure that changes in the app extension get processed correctly.
         // From: https://www.avanderlee.com/swift/core-data-app-extension-data-sharing/
-        
+        //
+        // TODO(perf): this refreshes every managed object currently registered in the context, which
+        // runs on every single remote-change notification (i.e. every NSE-delivered push while the app
+        // is foregrounded). Once the object graph is large, consider refreshing only the objects that
+        // actually changed instead of the whole context.
+
         context.stalenessInterval = 0
         context.refreshAllObjects()
         context.stalenessInterval = -1
@@ -158,16 +169,16 @@ class Store: ObservableObject {
     }
 
     func delete(subscription: Subscription) {
-        context.performAndWait {
+        context.perform {
             if let notifications = subscription.notifications {
                 notifications.forEach { notification in
                     guard let notification = notification as? Notification else { return }
-                    deleteAttachmentLocalFile(for: notification)
+                    self.deleteAttachmentLocalFile(for: notification)
                 }
             }
-            context.delete(subscription)
-            try? context.save()
-            syncBadgeCount()
+            self.context.delete(subscription)
+            try? self.context.save()
+            self.syncBadgeCount()
         }
     }
     
@@ -299,6 +310,7 @@ class Store: ObservableObject {
 
     func syncBadgeCount() {
         let count = unreadNotificationCount()
+        unreadCount = count
         DispatchQueue.main.async {
             UNUserNotificationCenter.current().setBadgeCount(count)
         }
@@ -307,15 +319,17 @@ class Store: ObservableObject {
     // MARK: Users
     
     func saveUser(baseUrl: String, username: String, password: String) {
-        do {
-            let user = getUser(baseUrl: baseUrl) ?? User(context: context)
-            user.baseUrl = normalizeBaseUrl(baseUrl)
-            user.username = username
-            user.password = password
-            try context.save()
-        } catch let error {
-            Log.w(Store.tag, "Cannot store user", error)
-            rollbackAndRefresh()
+        context.perform {
+            do {
+                let user = self.getUser(baseUrl: baseUrl) ?? User(context: self.context)
+                user.baseUrl = normalizeBaseUrl(baseUrl)
+                user.username = username
+                user.password = password
+                try self.context.save()
+            } catch let error {
+                Log.w(Store.tag, "Cannot store user", error)
+                self.rollbackAndRefresh()
+            }
         }
     }
     
