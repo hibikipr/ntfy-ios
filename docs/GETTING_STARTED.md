@@ -27,7 +27,7 @@ Note: these requirements are strictly based off of my development on this app. T
 1. On the "Project settings" page, add an iOS app
   1. Apple bundle ID - "com.copephobia.ntfy-ios" (this can be changed to match XCode's ntfy.sh target > "Bundle Identifier" value)
   1. Register the app
-  1. Download the config file - GoogleInfo.plist (this will need to be included in the ntfy-ios repository / XCode)
+  1. Download the config file - `GoogleService-Info.plist`. The app no longer bundles this file at build time — import it at runtime instead, from **Settings > Push Notifications Backend > Firebase configuration** in the running app (see the [README](../README.md#push-notifications-backend-firebase) for details).
 1. Generate a new service account private key for the ntfy server
   1. Go to "Project settings" > "Service accounts"
   1. Click "Generate new private key" to generate and download a private key to use for sending messages via the ntfy server
