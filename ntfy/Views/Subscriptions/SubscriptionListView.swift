@@ -213,6 +213,7 @@ struct SubscriptionItemRowView: View {
 }
 
 struct AllNotificationsRowView: View {
+    @EnvironmentObject private var iconManager: AppIconManager
     @ObservedObject var notificationsModel: AllNotificationsObservable
     let topicCount: Int
 
@@ -225,7 +226,7 @@ struct AllNotificationsRowView: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.accentColor)
+                    .fill(iconManager.current.accentColor)
                     .frame(width: 40, height: 40)
                 Image(systemName: "tray.full.fill")
                     .foregroundStyle(.white)
@@ -289,9 +290,11 @@ struct TopicAvatarView: View {
 }
 
 struct UnreadDotView: View {
+    @EnvironmentObject private var iconManager: AppIconManager
+
     var body: some View {
         Circle()
-            .fill(Color.accentColor)
+            .fill(iconManager.current.accentColor)
             .frame(width: 8, height: 8)
     }
 }
@@ -301,5 +304,6 @@ struct UnreadDotView: View {
     SubscriptionListView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
+        .environmentObject(AppIconManager())
         .environment(AppDelegate())
 }

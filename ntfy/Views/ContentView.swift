@@ -7,5 +7,10 @@ struct ContentView: View {
 }
 
 #Preview {
+    let store = Store.preview
     ContentView()
+        .environment(\.managedObjectContext, store.context)
+        .environmentObject(store)
+        .environmentObject(AppIconManager())
+        .environment(AppDelegate())
 }

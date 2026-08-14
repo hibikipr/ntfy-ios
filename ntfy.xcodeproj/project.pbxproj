@@ -82,6 +82,7 @@
 		FD9497F5302F43CC00E1AA61 /* FirebaseConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9497F3302F43CC00E1AA61 /* FirebaseConfigStore.swift */; };
 		FD9497F7302F445C00E1AA61 /* FirebaseConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */; };
 		FD9497F9302F458200E1AA61 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FD9497F8302F458200E1AA61 /* FirebaseCore */; };
+		FD9497FB302FA19600E1AA61 /* AppIconManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9497FA302FA19600E1AA61 /* AppIconManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -179,6 +180,7 @@
 		ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIconOption.swift; sourceTree = "<group>"; };
 		FD9497F3302F43CC00E1AA61 /* FirebaseConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseConfigStore.swift; sourceTree = "<group>"; };
 		FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseConfigView.swift; sourceTree = "<group>"; };
+		FD9497FA302FA19600E1AA61 /* AppIconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -224,6 +226,7 @@
 				ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */,
 				46BD4792D9C3230E14A8622D /* AppIconPickerView.swift */,
 				FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */,
+				FD9497FA302FA19600E1AA61 /* AppIconManager.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -558,6 +561,7 @@
 				29E8419C2FB417E400F927E4 /* SubscriptionAddView.swift in Sources */,
 				258B5053A8C14C1477993609 /* TopicEditorView.swift in Sources */,
 				94A3F7CA28386B2100C48E79 /* Config.swift in Sources */,
+				FD9497FB302FA19600E1AA61 /* AppIconManager.swift in Sources */,
 				9474F1C3282F2AA700CDE4DD /* ContentView.swift in Sources */,
 				9474F20C283321C300CDE4DD /* Notification.swift in Sources */,
 				E27008122AF1030A006E33BA /* NotificationsObservable.swift in Sources */,

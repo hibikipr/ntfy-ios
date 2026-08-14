@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import UIKit
 
 enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
@@ -31,6 +32,16 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
         case .classic: return "AppIconPreview-Default"
         case .orange: return "AppIconPreview-Orange"
         case .green: return "AppIconPreview-Green"
+        }
+    }
+
+    /// Matches the color sampled from this option's app icon, so the app's highlight color
+    /// follows whichever icon is currently selected.
+    var accentColor: Color {
+        switch self {
+        case .classic: return Color("AccentColor")
+        case .orange: return Color("AccentColor-Orange")
+        case .green: return Color("AccentColor-Green")
         }
     }
 

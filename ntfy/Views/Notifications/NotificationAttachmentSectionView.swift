@@ -9,6 +9,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct NotificationAttachmentSectionView: View {
+    @EnvironmentObject private var iconManager: AppIconManager
     @ObservedObject var notification: Notification
     let attachment: MessageAttachment
     let authorizationHeader: String?
@@ -193,7 +194,7 @@ struct NotificationAttachmentSectionView: View {
                         if !shouldShowLoadingPlaceholder(resolvedLocalFileUrl: localFileUrl) {
                             Text("Tap to load image")
                                 .font(.caption.weight(.semibold))
-                                .foregroundStyle(Color.accentColor)
+                                .foregroundStyle(iconManager.current.accentColor)
                         }
                     }
                 }

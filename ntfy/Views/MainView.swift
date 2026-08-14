@@ -26,5 +26,6 @@ struct MainView: View {
     MainView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
+        .environmentObject(AppIconManager())
         .environment(AppDelegate())
 }

@@ -106,4 +106,5 @@ struct AllNotificationsView: View {
     }
     .environment(\.managedObjectContext, store.context)
     .environmentObject(store)
+    .environmentObject(AppIconManager())
 }

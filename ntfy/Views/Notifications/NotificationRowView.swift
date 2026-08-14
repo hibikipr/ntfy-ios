@@ -11,6 +11,7 @@ import UniformTypeIdentifiers
 
 struct NotificationRowView: View {
     @EnvironmentObject private var store: Store
+    @EnvironmentObject private var iconManager: AppIconManager
     @Environment(\.openURL) private var openURL
     @ObservedObject var notification: Notification
     let onCopyMessage: () -> Void
@@ -47,7 +48,7 @@ struct NotificationRowView: View {
                 HStack(alignment: .top, spacing: 8) {
                     if !notification.isRead {
                         Circle()
-                            .fill(Color.accentColor)
+                            .fill(iconManager.current.accentColor)
                             .frame(width: 8, height: 8)
                             .padding(.top, 4)
                             .accessibilityLabel("Unread")
@@ -69,7 +70,7 @@ struct NotificationRowView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(Color.accentColor)
+                            .background(iconManager.current.accentColor)
                             .clipShape(Capsule())
                     }
                     Spacer()

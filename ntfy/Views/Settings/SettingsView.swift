@@ -81,5 +81,6 @@ struct SettingsView: View {
     SettingsView()
         .environment(\.managedObjectContext, store.context)
         .environmentObject(store)
+        .environmentObject(AppIconManager())
         .environment(AppDelegate())
 }

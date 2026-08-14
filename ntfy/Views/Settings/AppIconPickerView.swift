@@ -3,8 +3,8 @@ import SwiftUI
 struct AppIconPickerView: View {
     private let tag = "AppIconPickerView"
 
+    @EnvironmentObject private var iconManager: AppIconManager
     @State private var showDialog = false
-    @State private var currentIcon: AppIconOption = AppIconOption.current()
 
     var body: some View {
         Button(action: { showDialog = true }) {
@@ -12,7 +12,7 @@ struct AppIconPickerView: View {
                 Text("App Icon")
                     .foregroundStyle(.primary)
                 Spacer()
-                Text(currentIcon.displayName)
+                Text(iconManager.current.displayName)
                     .foregroundStyle(.gray)
             }
             .contentShape(Rectangle())
@@ -48,27 +48,21 @@ struct AppIconPickerView: View {
                 Text(option.displayName)
                     .foregroundStyle(.primary)
                 Spacer()
-                if option == currentIcon {
+                if option == iconManager.current {
                     Image(systemName: "checkmark")
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(option.accentColor)
                 }
             }
         }
     }
 
     private func selectIcon(_ option: AppIconOption) {
-        guard option != currentIcon else {
-            showDialog = false
-            return
-        }
-        UIApplication.shared.setAlternateIconName(option.iconName) { error in
+        showDialog = false
+        iconManager.setIcon(option) { error in
             if let error {
                 Log.e(tag, "Failed to set alternate icon to \(option.rawValue)", error)
-                return
             }
-            currentIcon = option
         }
-        showDialog = false
     }
 }
 
@@ -76,4 +70,5 @@ struct AppIconPickerView: View {
     Form {
         AppIconPickerView()
     }
+    .environmentObject(AppIconManager())
 }

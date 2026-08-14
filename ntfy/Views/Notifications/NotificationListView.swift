@@ -12,7 +12,8 @@ struct NotificationListView: View {
     
     @Environment(AppDelegate.self) private var delegate
     @EnvironmentObject private var store: Store
-    
+    @EnvironmentObject private var iconManager: AppIconManager
+
     @ObservedObject var subscription: Subscription
     @StateObject private var notificationsModel: NotificationsObservable
 
@@ -144,7 +145,7 @@ struct NotificationListView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(Color.accentColor.cornerRadius(20))
+                    .background(iconManager.current.accentColor.cornerRadius(20))
                     .shadow(radius: 5)
                     .padding(.bottom, 12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
@@ -308,8 +309,10 @@ struct NotificationListView: View {
         NotificationListView(subscription: subscriptionWithNotifications)
             .environment(\.managedObjectContext, store.context)
             .environmentObject(store)
+            .environmentObject(AppIconManager())
         NotificationListView(subscription: subscriptionWithoutNotifications)
             .environment(\.managedObjectContext, store.context)
             .environmentObject(store)
+            .environmentObject(AppIconManager())
     }
 }
