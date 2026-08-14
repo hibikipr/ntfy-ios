@@ -17,6 +17,12 @@ struct SettingsView: View {
                     DefaultServerView()
                 }
                 Section(
+                    header: Text("Push Notifications Backend"),
+                    footer: Text("Import your own GoogleService-Info.plist to receive push notifications through your own Firebase project. Your self-hosted ntfy server must also be configured with matching Firebase credentials. Changes take effect after restarting the app.")
+                ) {
+                    FirebaseConfigView()
+                }
+                Section(
                     header: Text("Appearance"),
                     footer: Text("Choose an alternate app icon.")
                 ) {

@@ -1,6 +1,5 @@
 import SwiftUI
 import CoreData
-import FirebaseMessaging
 import UserNotifications
 
 enum NotificationsRoute: Hashable {

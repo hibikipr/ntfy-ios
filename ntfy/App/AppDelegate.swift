@@ -18,18 +18,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         Log.d(tag, "Launching AppDelegate")
 
-        FirebaseApp.configure()
-        FirebaseConfiguration.shared.setLoggerLevel(.warning)
-
-        // Register app permissions for push notifications
+        // Register app permissions for local/remote notifications. This is independent of
+        // Firebase, so it happens regardless of whether a Firebase config has been imported.
         UNUserNotificationCenter.current().delegate = self
-        Messaging.messaging().delegate = self
         requestStandardNotificationAuthorization()
         refreshNotificationSettings()
-        
-        // Register too receive remote notifications
-        application.registerForRemoteNotifications()
-                
+
+        // Firebase is only configured once the user has imported their own GoogleService-Info.plist
+        // in Settings (see FirebaseConfigStore) — the app no longer ships one bundled. Until then,
+        // push notifications are disabled; every Messaging.messaging() call site elsewhere guards
+        // on FirebaseApp.app() != nil.
+        if let options = FirebaseConfigStore.loadOptions() {
+            FirebaseApp.configure(options: options)
+            FirebaseConfiguration.shared.setLoggerLevel(.warning)
+            Messaging.messaging().delegate = self
+            application.registerForRemoteNotifications()
+        } else {
+            Log.w(tag, "No Firebase configuration found; push notifications are disabled until one is imported in Settings")
+        }
+
         return true
     }
 
@@ -134,6 +141,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
     
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        guard FirebaseApp.app() != nil else { return }
         let token = deviceToken.map { data in String(format: "%02.2hhx", data) }.joined()
         Messaging.messaging().apnsToken = deviceToken
         Log.d(tag, "Registered for remote notifications. Passing APNs token \(token.prefix(12))... to Firebase")
@@ -219,6 +227,8 @@ extension AppDelegate {
     /// from silent subscription failures (network blip, token rotation) without waiting for
     /// the token itself to change again.
     func subscribeToFirebaseTopics() {
+        guard FirebaseApp.app() != nil else { return }
+
         // Subscribe to ~poll topic
         Messaging.messaging().subscribe(toTopic: pollTopic) { error in
             if let error {
