@@ -24,15 +24,25 @@ struct AppMain: App {
                 .environment(delegate)
                 .environment(\.managedObjectContext, store.context)
                 .tint(iconManager.current.accentColor)
+                // `.onAppear` covers cold launch reliably: `.onReceive` only delivers
+                // notifications posted *after* the Combine subscription is attached, and on a
+                // cold launch `didBecomeActiveNotification` can be posted before SwiftUI finishes
+                // mounting this view's modifiers, silently dropping the very first refresh. Also
+                // closes the window where a push notification's NSE-written Core Data row hasn't
+                // landed yet by the time Store.init() computed its initial unreadCount.
+                .onAppear(perform: refreshAfterBecomingActive)
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                     // Use this hook instead of applicationDidBecomeActive, see https://stackoverflow.com/a/68888509/1440785
                     // That post also explains how to start SwiftUI from AppDelegate if that's ever needed.
-                    
-                    Log.d(tag, "App became active, refreshing objects")
-                    store.hardRefresh()
-                    delegate.refreshNotificationSettings()
-                    delegate.subscribeToFirebaseTopics()
+                    refreshAfterBecomingActive()
                 }
         }
+    }
+
+    private func refreshAfterBecomingActive() {
+        Log.d(tag, "App became active, refreshing objects")
+        store.hardRefresh()
+        delegate.refreshNotificationSettings()
+        delegate.subscribeToFirebaseTopics()
     }
 }
