@@ -22,6 +22,13 @@ class Store: ObservableObject {
 
     static let shared = Store()
     static let tag = "Store"
+    /// Posted at the end of `hardRefresh()`. `context.refreshAllObjects()` only refreshes stale
+    /// property values on managed objects this context already knows about — it does not make a
+    /// long-lived `NSFetchedResultsController` discover brand-new rows inserted by another
+    /// process (the NSE), since that context never locally "sees" the insert happen. Observables
+    /// backed by an FRC that need to pick up cross-process inserts should re-run `performFetch()`
+    /// in response to this notification, not just rely on `controllerDidChangeContent`.
+    static let didHardRefreshNotification = NSNotification.Name("Store.didHardRefresh")
     static let appGroup = "group.com.victormanuel.ntfy" // Must match app group of ntfy = ntfyNSE targets
     static let modelName = "ntfy" // Must match .xdatamodeld folder
     static let prefKeyDefaultBaseUrl = "defaultBaseUrl"
@@ -115,6 +122,8 @@ class Store: ObservableObject {
         // never run through this process's save/markRead methods, so unreadCount would otherwise
         // stay stale until some other mutation happened to refresh it.
         syncBadgeCount()
+
+        NotificationCenter.default.post(name: Store.didHardRefreshNotification, object: self)
     }
 
     // MARK: Subscriptions

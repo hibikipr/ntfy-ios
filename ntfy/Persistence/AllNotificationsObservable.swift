@@ -1,8 +1,10 @@
+import Combine
 import CoreData
 import SwiftUI
 
 class AllNotificationsObservable: NSObject, ObservableObject {
     private let tag = "AllNotificationsObservable"
+    private var cancellables: Set<AnyCancellable> = []
 
     private lazy var fetchedResultsController: NSFetchedResultsController<Notification> = {
         let fetchRequest: NSFetchRequest<Notification> = Notification.fetchRequest()
@@ -19,6 +21,19 @@ class AllNotificationsObservable: NSObject, ObservableObject {
     override init() {
         super.init()
 
+        performFetch()
+
+        // `controllerDidChangeContent` alone won't fire for rows inserted by the NSE (a separate
+        // process/context) — re-fetch explicitly whenever Store signals a hard refresh.
+        NotificationCenter.default
+            .publisher(for: Store.didHardRefreshNotification)
+            .sink { [weak self] _ in
+                self?.performFetch()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func performFetch() {
         do {
             Log.d(tag, "Fetching all notifications")
             try self.fetchedResultsController.performFetch()
