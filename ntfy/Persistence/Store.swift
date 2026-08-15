@@ -110,6 +110,11 @@ class Store: ObservableObject {
         context.stalenessInterval = 0
         context.refreshAllObjects()
         context.stalenessInterval = -1
+
+        // Notifications inserted by the NSE (a separate process, with its own Store instance)
+        // never run through this process's save/markRead methods, so unreadCount would otherwise
+        // stay stale until some other mutation happened to refresh it.
+        syncBadgeCount()
     }
 
     // MARK: Subscriptions
