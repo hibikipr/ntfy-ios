@@ -22,15 +22,20 @@ struct SubscriptionManager {
             }
         }
         let subscription = store.saveSubscription(baseUrl: normalizedBaseUrl, topic: topic)
+        Task { @MainActor in
+            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        }
         Task {
             await poll(subscription, notifyOnNewMessages: false)
         }
     }
-    
+
     func unsubscribe(_ subscription: Subscription) {
         Log.d(tag, "Unsubscribing from \(subscription.urlString())")
+        let baseUrl = subscription.baseUrl
+        let topic = subscription.topic
         DispatchQueue.main.async {
-            if let baseUrl = subscription.baseUrl, let topic = subscription.topic, FirebaseApp.app() != nil {
+            if let baseUrl, let topic, FirebaseApp.app() != nil {
                 let firebaseTopicName = firebaseTopic(baseUrl: baseUrl, topic: topic)
                 Messaging.messaging().unsubscribe(fromTopic: firebaseTopicName) { error in
                     if let error {
@@ -39,6 +44,9 @@ struct SubscriptionManager {
                         Log.d(tag, "Firebase unsubscribe succeeded for \(firebaseTopicName)")
                     }
                 }
+            }
+            if let baseUrl, let topic {
+                TopicSyncCoordinator.shared.localSubscriptionWasRemoved(baseUrl: baseUrl, topic: topic)
             }
             store.delete(subscription: subscription)
         }
