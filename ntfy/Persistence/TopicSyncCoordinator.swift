@@ -56,6 +56,23 @@ final class TopicSyncCoordinator {
         let remoteOnly = TopicSyncDiff.remoteOnly(local: localIdentities, synced: syncedIdentities)
         let localOnly = TopicSyncDiff.localOnly(local: localIdentities, synced: syncedIdentities)
 
+        // Bootstrap uploads happen before the reentrancy guard is engaged: they write directly to
+        // TopicSyncStore and never call back into SubscriptionManager/Store, so there's no echo
+        // risk. Gating them behind isApplyingRemoteChange (as an earlier draft did) made every
+        // bootstrap upload a silent no-op, which then caused previously-local-only subscriptions
+        // to look permanently "unsynced" and eventually get deleted by the branch below.
+        if initialBootstrap {
+            for identity in localOnly {
+                guard let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }) else { continue }
+                TopicSyncStore.shared.upsert(
+                    baseUrl: identity.baseUrl,
+                    topic: identity.topic,
+                    customDisplayName: subscription.customDisplayName,
+                    icon: subscription.icon
+                )
+            }
+        }
+
         isApplyingRemoteChange = true
         defer { isApplyingRemoteChange = false }
 
@@ -71,13 +88,11 @@ final class TopicSyncCoordinator {
             Store.shared.saveIcon(for: subscription, icon: syncedTopic.icon)
         }
 
-        // Local has it, remote doesn't. First bootstrap pass: never uploaded yet, upload it.
-        // Every later pass: someone unsubscribed on another device, remove it locally too.
-        for identity in localOnly {
-            guard let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }) else { continue }
-            if initialBootstrap {
-                localSubscriptionDidChange(subscription)
-            } else {
+        // Local has it, remote doesn't, and it's NOT the first bootstrap pass (bootstrap already
+        // handled those above): someone unsubscribed on another device, remove it locally too.
+        if !initialBootstrap {
+            for identity in localOnly {
+                guard let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }) else { continue }
                 SubscriptionManager(store: .shared).unsubscribe(subscription)
             }
         }
