@@ -85,7 +85,7 @@
 		FD3DE60F3038FFF700B23FC4 /* TopicSyncStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE60E3038FFF700B23FC4 /* TopicSyncStoreTests.swift */; };
 		FD3DE6113039000D00B23FC4 /* TopicSyncStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE6103039000D00B23FC4 /* TopicSyncStore.swift */; };
 		FD3DE6133039011000B23FC4 /* TopicSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE6123039011000B23FC4 /* TopicSyncCoordinator.swift */; };
-		FD3DE6153039510F00B23FC4 /* iCloudSyncSettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE6143039510F00B23FC4 /* iCloudSyncSettingView.swift */; };
+		FD3DE6153039510F00B23FC4 /* ICloudSyncSettingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE6143039510F00B23FC4 /* ICloudSyncSettingView.swift */; };
 		FD9497F5302F43CC00E1AA61 /* FirebaseConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9497F3302F43CC00E1AA61 /* FirebaseConfigStore.swift */; };
 		FD9497F7302F445C00E1AA61 /* FirebaseConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */; };
 		FD9497F9302F458200E1AA61 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FD9497F8302F458200E1AA61 /* FirebaseCore */; };
@@ -191,7 +191,7 @@
 		FD3DE60E3038FFF700B23FC4 /* TopicSyncStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicSyncStoreTests.swift; sourceTree = "<group>"; };
 		FD3DE6103039000D00B23FC4 /* TopicSyncStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicSyncStore.swift; sourceTree = "<group>"; };
 		FD3DE6123039011000B23FC4 /* TopicSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicSyncCoordinator.swift; sourceTree = "<group>"; };
-		FD3DE6143039510F00B23FC4 /* iCloudSyncSettingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = iCloudSyncSettingView.swift; sourceTree = "<group>"; };
+		FD3DE6143039510F00B23FC4 /* ICloudSyncSettingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ICloudSyncSettingView.swift; sourceTree = "<group>"; };
 		FD9497F3302F43CC00E1AA61 /* FirebaseConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseConfigStore.swift; sourceTree = "<group>"; };
 		FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirebaseConfigView.swift; sourceTree = "<group>"; };
 		FD9497FA302FA19600E1AA61 /* AppIconManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppIconManager.swift; sourceTree = "<group>"; };
@@ -241,7 +241,7 @@
 				46BD4792D9C3230E14A8622D /* AppIconPickerView.swift */,
 				FD9497F6302F445C00E1AA61 /* FirebaseConfigView.swift */,
 				FD9497FA302FA19600E1AA61 /* AppIconManager.swift */,
-				FD3DE6143039510F00B23FC4 /* iCloudSyncSettingView.swift */,
+				FD3DE6143039510F00B23FC4 /* ICloudSyncSettingView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -569,7 +569,7 @@
 				2939B21A2F8F293C00A52946 /* SettingsView.swift in Sources */,
 				2939B21B2F8F293C00A52946 /* UserTableView.swift in Sources */,
 				E27008102AF0F64B006E33BA /* SubscriptionsObservable.swift in Sources */,
-				FD3DE6153039510F00B23FC4 /* iCloudSyncSettingView.swift in Sources */,
+				FD3DE6153039510F00B23FC4 /* ICloudSyncSettingView.swift in Sources */,
 				02024E60283D7CBB0064224A /* Extensions.swift in Sources */,
 				948671472841B0B20093C7A4 /* NotificationContent.swift in Sources */,
 				0E323F2D6E3296F12D40E1AF /* LocalNotificationPoster.swift in Sources */,
