@@ -56,7 +56,7 @@ struct NotificationRowView: View {
                     HStack(alignment: .center, spacing: 2) {
                         Text(notification.shortDateTime())
                             .font(.subheadline)
-                            .foregroundStyle(.gray)
+                            .foregroundStyle(.secondary)
                         if [1,2,4,5].contains(notification.priority) {
                             Image("priority-\(notification.priority)")
                                 .resizable()
@@ -70,8 +70,7 @@ struct NotificationRowView: View {
                             .foregroundStyle(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 2)
-                            .background(iconManager.current.accentColor)
-                            .clipShape(Capsule())
+                            .glassEffect(.regular.tint(iconManager.current.accentColor), in: .capsule)
                     }
                     Spacer()
                     if clickUrl != nil {
@@ -89,7 +88,7 @@ struct NotificationRowView: View {
                 if !notification.nonEmojiTags().isEmpty {
                     Text("Tags: " + notification.nonEmojiTags().joined(separator: ", "))
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                         .padding([.top], 2)
                 }
             }
@@ -120,7 +119,7 @@ struct NotificationRowView: View {
                         Button(action.label) {
                             ActionExecutor.execute(action)
                         }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.glassProminent)
                     }
                 }
                 .padding([.top], 5)
@@ -161,7 +160,7 @@ struct NotificationRowView: View {
             }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .foregroundStyle(.gray)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
         }
@@ -433,4 +432,25 @@ extension NotificationRowView {
         }
     }
 
+}
+
+#Preview {
+    let store = Store.preview
+    let subscription = store.makeSubscription(store.context, "stats", Store.sampleMessages["stats"]!)
+    let notifications = (subscription.notifications?.allObjects as? [Notification] ?? [])
+        .sorted { $0.time < $1.time }
+
+    return List {
+        ForEach(notifications, id: \.self) { notification in
+            NotificationRowView(
+                notification: notification,
+                onCopyMessage: { },
+                subscriptionLabel: "stats"
+            )
+        }
+    }
+    .listStyle(.insetGrouped)
+    .environment(\.managedObjectContext, store.context)
+    .environmentObject(store)
+    .environmentObject(AppIconManager())
 }

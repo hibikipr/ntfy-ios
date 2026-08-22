@@ -32,7 +32,7 @@ struct FirebaseConfigView: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(status.label)
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
         }
@@ -51,7 +51,7 @@ struct FirebaseConfigView: View {
                             }
                         } else {
                             Text("Not configured")
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.secondary)
                         }
 
                         Button("Import GoogleService-Info.plist") {

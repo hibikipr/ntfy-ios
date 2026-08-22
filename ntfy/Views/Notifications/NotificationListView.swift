@@ -140,13 +140,12 @@ struct NotificationListView: View {
         }
         .overlay(Group {
             if showCopiedConfirmation {
-                Text("Copied to Clipboard")
+                Label("Copied to Clipboard", systemImage: "checkmark.circle.fill")
                     .font(.body)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(iconManager.current.accentColor.cornerRadius(20))
-                    .shadow(radius: 5)
+                    .glassEffect(.regular.tint(iconManager.current.accentColor), in: .capsule)
                     .padding(.bottom, 12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

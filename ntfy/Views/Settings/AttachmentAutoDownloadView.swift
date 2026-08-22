@@ -36,7 +36,7 @@ struct AttachmentAutoDownloadView: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(title(for: currentValue))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
         }
@@ -70,4 +70,15 @@ struct AttachmentAutoDownloadView: View {
     private func title(for value: Int64) -> String {
         options.first(where: { $0.value == value })?.title ?? "Under 1 MB"
     }
+}
+
+#Preview {
+    let store = Store.previewEmpty
+    Form {
+        Section {
+            AttachmentAutoDownloadView()
+        }
+    }
+    .environment(\.managedObjectContext, store.context)
+    .environmentObject(store)
 }

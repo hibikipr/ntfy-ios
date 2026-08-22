@@ -70,6 +70,7 @@ struct SubscriptionListView: View {
                 } label: {
                     Image(systemName: "plus")
                 }
+                .buttonStyle(.glassProminent)
             }
         }
         .overlay {
@@ -185,19 +186,19 @@ struct SubscriptionItemRowView: View {
                         if !isDefaultServer, let baseUrl = subscription.baseUrl {
                             Text(shortUrl(url: baseUrl))
                                 .font(.caption)
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.secondary)
                                 .lineLimit(1)
                         }
                     }
                     Spacer()
                     Text(notificationsModel.notifications.first?.shortDateTime() ?? "")
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                 }
                 HStack {
                     Text("\(totalNotificationCount) notification\(totalNotificationCount != 1 ? "s" : "")")
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                     if unreadCount > 0 {
                         Spacer()
                         UnreadDotView()
@@ -232,6 +233,7 @@ struct AllNotificationsRowView: View {
                     .foregroundStyle(.white)
                     .font(.system(size: 16))
             }
+            .shadow(color: iconManager.current.accentColor.opacity(0.35), radius: 3, y: 1)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text("All Notifications")
@@ -241,12 +243,12 @@ struct AllNotificationsRowView: View {
                     // notifications is already sorted by time descending
                     Text(notifications.first?.shortDateTime() ?? "")
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                 }
                 HStack {
                     Text("\(notifications.count) notification\(notifications.count != 1 ? "s" : "") across \(topicCount) topic\(topicCount != 1 ? "s" : "")")
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                     if unreadCount > 0 {
                         Spacer()
                         UnreadDotView()
@@ -286,6 +288,7 @@ struct TopicAvatarView: View {
                     .foregroundStyle(.white)
             }
         }
+        .shadow(color: color.opacity(0.35), radius: 3, y: 1)
     }
 }
 

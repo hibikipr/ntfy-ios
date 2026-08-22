@@ -52,7 +52,7 @@ struct NotificationAttachmentImageView: View {
                     ProgressView()
                     Text("Loading preview")
                         .font(.caption)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                 }
             }
     }
@@ -64,7 +64,7 @@ struct NotificationAttachmentImageView: View {
             .overlay {
                 Image(systemName: "photo")
                     .font(.title2)
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
     }
 }
@@ -72,6 +72,14 @@ struct NotificationAttachmentImageView: View {
 private struct PresentedImage: Identifiable {
     let id = UUID()
     let image: UIImage
+}
+
+#Preview {
+    VStack(spacing: 16) {
+        NotificationAttachmentImageView(localFileUrl: nil, isLoading: true)
+        NotificationAttachmentImageView(localFileUrl: nil, isLoading: false)
+    }
+    .padding()
 }
 
 struct AttachmentFullscreenImageView: View {

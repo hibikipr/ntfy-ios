@@ -36,7 +36,7 @@ struct DefaultServerView: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(shortUrl(url: defaultBaseUrl))
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
         }
@@ -102,4 +102,15 @@ struct DefaultServerView: View {
     private func resetAndHide() {
         showDialog = false
     }
+}
+
+#Preview {
+    let store = Store.previewEmpty
+    Form {
+        Section(footer: Text("When subscribing to new topics, this server will be used as a default.")) {
+            DefaultServerView()
+        }
+    }
+    .environment(\.managedObjectContext, store.context)
+    .environmentObject(store)
 }

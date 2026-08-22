@@ -61,7 +61,7 @@ struct NotificationAttachmentSectionView: View {
                         HStack(alignment: .center, spacing: 10) {
                             Image(systemName: attachment.systemImageName())
                                 .font(.title3)
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.secondary)
                                 .frame(width: 24, height: 24)
 
                             VStack(alignment: .leading, spacing: 3) {
@@ -171,7 +171,7 @@ struct NotificationAttachmentSectionView: View {
                         } else {
                             Image(systemName: "photo")
                                 .font(.title2)
-                                .foregroundStyle(.gray)
+                                .foregroundStyle(.secondary)
                         }
 
                         Text(attachment.displayName())
@@ -259,7 +259,7 @@ struct NotificationAttachmentSectionView: View {
             attachmentMenuItems(localFileUrl: localFileUrl)
         } label: {
             Image(systemName: "ellipsis.circle")
-                .foregroundStyle(.gray)
+                .foregroundStyle(.secondary)
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
                 .background(.ultraThinMaterial, in: Circle())
@@ -351,4 +351,29 @@ struct NotificationAttachmentSectionView: View {
         isPreparingAutoDownload = attachment.isImageAttachment()
             && shouldAutoDownloadAttachment(resolvedLocalFileUrl: resolvedLocalFileUrl)
     }
+}
+
+#Preview {
+    let store = Store.previewEmpty
+    let attachment = MessageAttachment(name: "photo.jpg", type: "image/jpeg", size: 123456, expires: nil, url: "https://ntfy.sh/attachment/photo.jpg")
+    let notification = Notification(context: store.context)
+    notification.id = "preview-attachment"
+    notification.attachmentName = attachment.name
+    notification.attachmentType = attachment.type
+    notification.attachmentSize = attachment.size ?? 0
+    notification.attachmentUrl = attachment.url
+    notification.attachmentProgress = AttachmentProgressState.none.persistedValue
+
+    return NotificationAttachmentSectionView(
+        notification: notification,
+        attachment: attachment,
+        authorizationHeader: nil,
+        controller: NotificationAttachmentController(),
+        onOpen: { _ in },
+        onShare: { _ in },
+        onSave: { _ in },
+        onCopy: { }
+    )
+    .padding()
+    .environmentObject(AppIconManager())
 }

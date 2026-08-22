@@ -17,7 +17,7 @@ struct AboutView: View {
                     Text("Read the docs")
                     Spacer()
                     Text("ntfy.sh/docs")
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                     Image(systemName: "link")
                 }
             }
@@ -28,7 +28,7 @@ struct AboutView: View {
                     Text("Report a bug")
                     Spacer()
                     Text("github.com")
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                     Image(systemName: "link")
                 }
             }
@@ -39,7 +39,7 @@ struct AboutView: View {
                     Text("Rate the app")
                     Spacer()
                     Text("App Store")
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                     Image(systemName: "star.fill")
                 }
             }
@@ -47,7 +47,7 @@ struct AboutView: View {
                 Text("Version")
                 Spacer()
                 Text("ntfy \(Config.version) (\(Config.build))")
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
         }
         .foregroundStyle(.primary)
@@ -56,5 +56,13 @@ struct AboutView: View {
     private func open(url: String) {
         guard let url = URL(string: url) else { return }
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
+}
+
+#Preview {
+    Form {
+        Section(header: Text("About")) {
+            AboutView()
+        }
     }
 }

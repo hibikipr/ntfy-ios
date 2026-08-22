@@ -13,7 +13,7 @@ struct AppIconPickerView: View {
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(iconManager.current.displayName)
-                    .foregroundStyle(.gray)
+                    .foregroundStyle(.secondary)
             }
             .contentShape(Rectangle())
         }

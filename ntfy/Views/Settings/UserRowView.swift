@@ -23,14 +23,28 @@ struct UserRowView: View {
                     Text(user.username ?? "?")
                     Text(user.baseUrl ?? "?")
                         .font(.subheadline)
-                        .foregroundStyle(.gray)
+                        .foregroundStyle(.secondary)
                 }
             }
             Spacer()
             Image(systemName: "chevron.forward")
                 .font(.system(size: 12.0))
-                .foregroundStyle(.gray)
+                .foregroundStyle(.secondary)
         }
         .padding(.all, 4)
     }
+}
+
+#Preview {
+    let store = Store.previewEmpty
+    let user = User(context: store.context)
+    user.baseUrl = "https://ntfy.sh"
+    user.username = "phil"
+    user.password = "phil12"
+
+    return List {
+        UserRowView(user: user)
+    }
+    .environment(\.managedObjectContext, store.context)
+    .environmentObject(store)
 }

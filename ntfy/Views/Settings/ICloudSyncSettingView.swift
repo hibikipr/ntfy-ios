@@ -28,7 +28,7 @@ struct ICloudSyncSettingView: View {
                 .foregroundStyle(.primary)
             Spacer()
             Text(statusText)
-                .foregroundStyle(.gray)
+                .foregroundStyle(.secondary)
         }
         .onAppear(perform: refreshStatus)
         .onReceive(NotificationCenter.default.publisher(for: TopicSyncStore.accountChangedNotification)) { _ in
