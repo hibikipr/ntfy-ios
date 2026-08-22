@@ -22,7 +22,7 @@ struct SubscriptionManager {
             }
         }
         let subscription = store.saveSubscription(baseUrl: normalizedBaseUrl, topic: topic)
-        Task { @MainActor in
+        MainActor.assumeIsolated {
             TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
         }
         Task {
