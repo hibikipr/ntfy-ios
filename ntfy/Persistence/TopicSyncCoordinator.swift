@@ -25,6 +25,15 @@ final class TopicSyncCoordinator {
             .publisher(for: TopicSyncStore.didChangeNotification)
             .sink { [weak self] _ in self?.reconcileFromRemote(initialBootstrap: false) }
             .store(in: &cancellables)
+        // On an iCloud account change, TopicSyncStore has already wiped its local replica, so a
+        // normal (initialBootstrap: false) reconcile would see every local subscription as
+        // "unsynced" and delete it — the exact data-loss bug fixed for the ordinary bootstrap
+        // path. Re-run with initialBootstrap: true instead, so local subscriptions are re-
+        // uploaded to the new account rather than treated as unsubscribed elsewhere.
+        NotificationCenter.default
+            .publisher(for: TopicSyncStore.accountChangedNotification)
+            .sink { [weak self] _ in self?.reconcileFromRemote(initialBootstrap: true) }
+            .store(in: &cancellables)
     }
 
     /// Call after a subscription is created, or its display name/icon changes.

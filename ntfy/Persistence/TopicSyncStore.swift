@@ -13,6 +13,11 @@ final class TopicSyncStore {
     /// Posted whenever a remote (cross-device) change is detected. `TopicSyncCoordinator`
     /// listens for this to trigger reconciliation.
     static let didChangeNotification = NSNotification.Name("TopicSyncStore.didChange")
+    /// Posted whenever CloudKit reports that the account setup failed or a different iCloud
+    /// account is now active (e.g. sign-out/sign-in, or a shared/borrowed device).
+    /// `TopicSyncCoordinator` listens for this to re-bootstrap rather than treat the local
+    /// replica's absence as "unsubscribed elsewhere."
+    static let accountChangedNotification = NSNotification.Name("TopicSyncStore.accountChanged")
 
     private static let containerIdentifier = "iCloud.com.victormanuel.ntfy" // must match Task 3's container
 
@@ -52,6 +57,18 @@ final class TopicSyncStore {
                 NotificationCenter.default.post(name: TopicSyncStore.didChangeNotification, object: self)
             }
             .store(in: &cancellables)
+
+        NotificationCenter.default
+            .publisher(for: NSPersistentCloudKitContainer.eventChangedNotification)
+            .compactMap { $0.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey] as? NSPersistentCloudKitContainer.Event }
+            .filter { $0.type == .setup && $0.succeeded == false }
+            .sink { [weak self] _ in
+                guard let self else { return }
+                Log.w(TopicSyncStore.tag, "CloudKit account setup failed or changed; clearing local replica")
+                self.clearLocalReplica()
+                NotificationCenter.default.post(name: TopicSyncStore.accountChangedNotification, object: self)
+            }
+            .store(in: &cancellables)
     }
 
     func allSyncedTopics() -> [SyncedTopic] {
@@ -86,5 +103,16 @@ final class TopicSyncStore {
         let request = SyncedTopic.fetchRequest()
         request.predicate = NSPredicate(format: "recordName == %@", recordName)
         return try context.fetch(request).first
+    }
+
+    /// Deletes every local `SyncedTopic` — the CloudKit mirror will repopulate from whichever
+    /// account is now active. Called when CloudKit reports a failed/changed account setup.
+    private func clearLocalReplica() {
+        context.performAndWait {
+            for syncedTopic in allSyncedTopics() {
+                context.delete(syncedTopic)
+            }
+            try? context.save()
+        }
     }
 }
