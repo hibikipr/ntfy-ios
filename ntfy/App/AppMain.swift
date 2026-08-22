@@ -14,6 +14,9 @@ struct AppMain: App {
     init() {
         Log.d(tag, "Launching ntfy 🥳. Welcome!")
         Log.d(tag, "Base URL is \(Config.appBaseUrl), user agent is \(ApiService.userAgent)")
+        Task { @MainActor in
+            TopicSyncCoordinator.shared.start()
+        }
     }
 
     var body: some Scene {
