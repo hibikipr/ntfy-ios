@@ -152,6 +152,16 @@ class Store: ObservableObject {
             subscription.icon = (icon?.isEmpty ?? true) ? nil : icon
             try? context.save()
         }
+        #if !NTFY_NSE
+        // TopicSyncCoordinator (CloudKit-backed) only exists in the main app target: the NSE
+        // target has no iCloud/CloudKit entitlement and doesn't compile these sync sources, so
+        // this call must be compiled out there. saveIcon/saveDisplayName are only ever invoked
+        // from SwiftUI view actions or the coordinator's own reconciliation loop, both of which
+        // are already on the main actor, hence assumeIsolated instead of hopping via Task/async.
+        MainActor.assumeIsolated {
+            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        }
+        #endif
     }
 
     func saveDisplayName(for subscription: Subscription, name: String?) {
@@ -160,6 +170,11 @@ class Store: ObservableObject {
             subscription.customDisplayName = trimmed.isEmpty ? nil : String(trimmed.prefix(64))
             try? context.save()
         }
+        #if !NTFY_NSE
+        MainActor.assumeIsolated {
+            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        }
+        #endif
     }
 
     func completeAttachmentDownload(notificationID: String, localPath: String, resolvedType: String?, resolvedSize: Int64) {
