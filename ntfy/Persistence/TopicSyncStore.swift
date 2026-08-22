@@ -28,7 +28,15 @@ final class TopicSyncStore {
     }
 
     private static let containerIdentifier = "iCloud.com.victormanuel.ntfy" // must match Task 3's container
+    /// The account seen the last time `CKAccountChanged` was handled (or app first run). Used only
+    /// to tell a real account switch from the many other reasons that notification fires.
     private static let ubiquityTokenDefaultsKey = "TopicSyncStore.lastUbiquityIdentityToken"
+    /// The account the last launch-time reconcile ran against. Deliberately a *separate* key from
+    /// `ubiquityTokenDefaultsKey`: that one is updated the moment `CKAccountChanged` reports a
+    /// switch — i.e. before the new account has been bootstrapped — so reusing it would make the
+    /// next launch think the new account was already bootstrapped and upload the previous account
+    /// owner's topics into it.
+    private static let bootstrappedTokenDefaultsKey = "TopicSyncStore.lastBootstrappedUbiquityIdentityToken"
 
     private let container: NSPersistentCloudKitContainer
     private let inMemory: Bool
@@ -96,7 +104,7 @@ final class TopicSyncStore {
         // Seed the last-seen ubiquity token on first run so the very first CKAccountChanged
         // doesn't look like a nil -> non-nil account switch and needlessly wipe the replica.
         if UserDefaults.standard.data(forKey: Self.ubiquityTokenDefaultsKey) == nil {
-            persistUbiquityToken(FileManager.default.ubiquityIdentityToken)
+            persistToken(FileManager.default.ubiquityIdentityToken, forKey: Self.ubiquityTokenDefaultsKey)
         }
 
         NotificationCenter.default
@@ -177,46 +185,72 @@ final class TopicSyncStore {
         return try context.fetch(request).first
     }
 
-    /// Keeps, per `(baseUrl, topic)`, only the row with the newest `lastModified`, and deletes the
-    /// rest. Rows missing a `baseUrl`/`topic` are excluded from the result (they can't be matched
-    /// against a local subscription and would otherwise reconcile as a bogus `("", "")` topic) but
-    /// are deliberately not deleted — they may be a partially-imported CloudKit record.
+    /// Returns one row per `(baseUrl, topic)` — the one with the newest `lastModified` — and
+    /// deletes the rows that are *strictly* older than it. Rows missing a `baseUrl`/`topic` are
+    /// excluded from the result (they can't be matched against a local subscription and would
+    /// otherwise reconcile as a bogus `("", "")` topic) but are deliberately not deleted — they may
+    /// be a partially-imported CloudKit record.
     ///
     /// The losers are deleted through the mirrored `viewContext`, which does export a CloudKit
     /// delete. That is intentional and correct here (unlike `clearLocalReplica`): a duplicate
     /// record is genuine garbage that no user ever asked for, and it should disappear everywhere,
-    /// not just locally. Every device runs the same "newest lastModified wins" rule, so they
-    /// converge on deleting the same loser rather than deleting each other's winner.
+    /// not just locally.
+    ///
+    /// Nothing is deleted from a group whose newest `lastModified` is *tied*, including the case
+    /// where several rows have no `lastModified` at all (it is an optional attribute for CloudKit
+    /// compatibility, and a partially-imported record can arrive without it). A tie has no
+    /// tiebreaker that agrees across devices: `recordName` is identical for true duplicates by
+    /// construction, and the fetch order is otherwise arbitrary, so two devices could each pick a
+    /// different loser and between them delete *every* copy of the topic. That is not a transient
+    /// extra delete — with no remaining row, the next `.remoteChange` pass sees the subscription as
+    /// local-only and unsubscribes it, destroying its attachments and notification history. Keeping
+    /// a tied duplicate around instead is bounded and harmless: it costs one redundant CloudKit
+    /// record until either copy is edited (`upsert` refreshes `lastModified`, breaking the tie and
+    /// letting the next pass collapse the group).
     /// Must be called from inside `context.performAndWait`.
     private func deduplicate(_ topics: [SyncedTopic]) -> [SyncedTopic] {
-        var winners: [TopicIdentity: SyncedTopic] = [:]
-        var losers: Set<ObjectIdentifier> = []
-        var usable: [SyncedTopic] = []
+        var groups: [TopicIdentity: [SyncedTopic]] = [:]
+        var identityOrder: [TopicIdentity] = []
 
         for syncedTopic in topics {
             guard let baseUrl = syncedTopic.baseUrl, let topic = syncedTopic.topic else {
                 Log.w(Self.tag, "Ignoring SyncedTopic row with missing baseUrl/topic (recordName=\(syncedTopic.recordName ?? "<nil>"))")
                 continue
             }
-            usable.append(syncedTopic)
             let identity = TopicIdentity(baseUrl: baseUrl, topic: topic)
-            guard let incumbent = winners[identity] else {
-                winners[identity] = syncedTopic
-                continue
-            }
-            if (syncedTopic.lastModified ?? .distantPast) > (incumbent.lastModified ?? .distantPast) {
-                winners[identity] = syncedTopic
-                losers.insert(ObjectIdentifier(incumbent))
-            } else {
-                losers.insert(ObjectIdentifier(syncedTopic))
-            }
+            if groups[identity] == nil { identityOrder.append(identity) }
+            groups[identity, default: []].append(syncedTopic)
         }
 
-        guard !losers.isEmpty else { return usable }
+        var survivors: [SyncedTopic] = []
+        var doomed: [SyncedTopic] = []
+        var tiedGroupCount = 0
 
-        let survivors = usable.filter { !losers.contains(ObjectIdentifier($0)) }
-        Log.w(Self.tag, "Removing \(losers.count) duplicate SyncedTopic row(s)")
-        for syncedTopic in usable where losers.contains(ObjectIdentifier(syncedTopic)) {
+        for identity in identityOrder {
+            guard let rows = groups[identity], let first = rows.first else { continue }
+            guard rows.count > 1 else {
+                survivors.append(first)
+                continue
+            }
+            let newest = rows.map { $0.lastModified ?? .distantPast }.max() ?? .distantPast
+            let tiedAtNewest = rows.filter { ($0.lastModified ?? .distantPast) == newest }
+            // Only rows strictly older than the newest are unambiguous losers: every device
+            // computes the same maximum, so they all delete the same rows and never the last one.
+            doomed.append(contentsOf: rows.filter { ($0.lastModified ?? .distantPast) < newest })
+            if tiedAtNewest.count > 1 { tiedGroupCount += 1 }
+            // Report a single row per identity regardless, so reconciliation never sees the same
+            // topic twice; the other tied rows simply stay on disk untouched.
+            survivors.append(tiedAtNewest[0])
+        }
+
+        if tiedGroupCount > 0 {
+            Log.w(Self.tag, "Keeping \(tiedGroupCount) duplicate SyncedTopic group(s) with a tied lastModified: deleting either copy is not safe across devices")
+        }
+
+        guard !doomed.isEmpty else { return survivors }
+
+        Log.w(Self.tag, "Removing \(doomed.count) duplicate SyncedTopic row(s)")
+        for syncedTopic in doomed {
             context.delete(syncedTopic)
         }
         try? context.save()
@@ -227,17 +261,9 @@ final class TopicSyncStore {
 
     private func handleAccountChanged() {
         let current = FileManager.default.ubiquityIdentityToken
-        let previous = loadPersistedUbiquityToken()
-        let changed: Bool
-        switch (previous, current) {
-        case (nil, nil):
-            changed = false
-        case let (previous?, current?):
-            changed = !previous.isEqual(current)
-        default:
-            changed = true // nil -> signed in, or signed in -> nil
-        }
-        persistUbiquityToken(current)
+        let previous = loadPersistedToken(forKey: Self.ubiquityTokenDefaultsKey)
+        let changed = !Self.accountTokensMatch(previous, current)
+        persistToken(current, forKey: Self.ubiquityTokenDefaultsKey)
         guard changed else {
             Log.d(Self.tag, "CKAccountChanged fired but the ubiquity identity token is unchanged; ignoring")
             return
@@ -247,8 +273,63 @@ final class TopicSyncStore {
         NotificationCenter.default.post(name: TopicSyncStore.accountChangedNotification, object: self)
     }
 
-    private func loadPersistedUbiquityToken() -> (NSCoding & NSCopying & NSObjectProtocol)? {
-        guard let data = UserDefaults.standard.data(forKey: Self.ubiquityTokenDefaultsKey) else { return nil }
+    /// Whether two ubiquity identity tokens describe the same iCloud account. `nil` means "no
+    /// account" (signed out, or iCloud Drive turned off), so `nil`/`nil` counts as unchanged and
+    /// `nil`/non-`nil` counts as a change in either direction.
+    static func accountTokensMatch(_ lhs: NSObjectProtocol?, _ rhs: NSObjectProtocol?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return true
+        case let (lhs?, rhs?):
+            return lhs.isEqual(rhs)
+        default:
+            return false
+        }
+    }
+
+    /// Pure decision helper behind `launchIsOnANewAccount`, split out so it can be tested without
+    /// a real iCloud account or `UserDefaults`.
+    ///
+    /// - Parameters:
+    ///   - lastBootstrapped: the token recorded when a launch reconcile last completed. `nil` there
+    ///     means "that launch ran with no iCloud account", which is a real, comparable state.
+    ///   - hasBootstrapRecord: whether such a launch has *ever* completed on this device. Without
+    ///     this, the first-ever launch (nothing recorded) would be indistinguishable from "the last
+    ///     launch ran signed out", and a brand-new install would refuse to upload its own topics.
+    ///   - current: the token of the account active right now.
+    static func launchIsOnANewAccount(
+        lastBootstrapped: NSObjectProtocol?,
+        hasBootstrapRecord: Bool,
+        current: NSObjectProtocol?
+    ) -> Bool {
+        guard hasBootstrapRecord else { return false }
+        return !accountTokensMatch(lastBootstrapped, current)
+    }
+
+    /// True when the account active right now is *not* the one the last launch-time reconcile ran
+    /// against — meaning the account was switched while the app wasn't running, so no
+    /// `CKAccountChanged` notification ever fired for it. `TopicSyncCoordinator` uses this to treat
+    /// such a launch like an account change instead of a first-run bootstrap, so the previous
+    /// account owner's local-only subscriptions are not uploaded into the new account.
+    var launchIsOnANewAccount: Bool {
+        Self.launchIsOnANewAccount(
+            lastBootstrapped: loadPersistedToken(forKey: Self.bootstrappedTokenDefaultsKey),
+            hasBootstrapRecord: UserDefaults.standard.data(forKey: Self.bootstrappedTokenDefaultsKey) != nil,
+            current: FileManager.default.ubiquityIdentityToken
+        )
+    }
+
+    /// Records the account this launch's reconcile ran against, so the *next* launch can tell
+    /// whether the account changed in between. Called for both the normal bootstrap and the
+    /// "changed while we weren't running" launch, so the account that is now on this device
+    /// behaves like a normal, already-bootstrapped account from the following launch onwards.
+    func markCurrentAccountBootstrapped() {
+        guard !inMemory else { return }
+        persistToken(FileManager.default.ubiquityIdentityToken, forKey: Self.bootstrappedTokenDefaultsKey)
+    }
+
+    private func loadPersistedToken(forKey key: String) -> (NSCoding & NSCopying & NSObjectProtocol)? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         guard let unarchiver = try? NSKeyedUnarchiver(forReadingFrom: data) else { return nil }
         // NSUbiquityIdentityToken is an opaque, undocumented concrete class, so we can't name it in
         // an allowed-classes list; secure coding has to be off for the read side.
@@ -257,19 +338,19 @@ final class TopicSyncStore {
         return unarchiver.decodeObject(forKey: NSKeyedArchiveRootObjectKey) as? (NSCoding & NSCopying & NSObjectProtocol)
     }
 
-    private func persistUbiquityToken(_ token: (NSCoding & NSCopying & NSObjectProtocol)?) {
+    private func persistToken(_ token: (NSCoding & NSCopying & NSObjectProtocol)?, forKey key: String) {
         guard let token else {
             // Signed out: store an empty marker so "we have looked before" stays distinguishable
             // from "first launch" only via the key's presence, which is all handleAccountChanged
-            // needs (a nil-decoding archive reads back as nil).
-            UserDefaults.standard.set(Data(), forKey: Self.ubiquityTokenDefaultsKey)
+            // and launchIsOnANewAccount need (a nil-decoding archive reads back as nil).
+            UserDefaults.standard.set(Data(), forKey: key)
             return
         }
         guard let data = try? NSKeyedArchiver.archivedData(withRootObject: token, requiringSecureCoding: false) else {
             Log.w(Self.tag, "Could not archive the ubiquity identity token")
             return
         }
-        UserDefaults.standard.set(data, forKey: Self.ubiquityTokenDefaultsKey)
+        UserDefaults.standard.set(data, forKey: key)
     }
 
     // MARK: - Store lifecycle

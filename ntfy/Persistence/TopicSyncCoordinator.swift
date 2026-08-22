@@ -24,6 +24,10 @@ final class TopicSyncCoordinator {
         /// previous account owner's topics into it (this can be a shared or borrowed device), and
         /// do NOT delete local subscriptions either — they simply stop being synced until the user
         /// edits them again. Whatever the new account already has is still downloaded.
+        ///
+        /// Used both for an in-session `CKAccountChanged` and for the first launch after a switch
+        /// that happened while the app wasn't running (see `start()`), which posts no notification
+        /// at all and would otherwise look like an ordinary first-run bootstrap.
         case accountChange
         /// A cross-device change arrived for the already-bootstrapped current account. Local
         /// topics missing from the remote list really were unsubscribed on another device.
@@ -41,7 +45,23 @@ final class TopicSyncCoordinator {
     private var hasBootstrappedCurrentAccount = false
 
     func start() {
-        reconcileFromRemote(mode: .initialBootstrap)
+        // `hasBootstrappedCurrentAccount` only covers an account switch that happens while this
+        // process is alive. If the user switches accounts with the app not running, no
+        // CKAccountChanged is ever delivered to us, and an unconditional `.initialBootstrap` here
+        // would upload the previous account owner's topics into the new account on the very next
+        // cold launch — exactly what ReconcileMode.accountChange exists to prevent. The persisted
+        // "account we last ran a launch pass for" is the only thing that survives a relaunch, so
+        // ask it instead of assuming.
+        let launchMode: ReconcileMode = TopicSyncStore.shared.launchIsOnANewAccount ? .accountChange : .initialBootstrap
+        if launchMode == .accountChange {
+            Log.w(tag, "The iCloud account changed while the app was not running; not uploading local-only subscriptions on this launch")
+        }
+        if reconcileFromRemote(mode: launchMode) {
+            // Only after a pass actually ran: if it bailed out (mirrored store not loaded) nothing
+            // was reconciled, and recording the account would hand the next launch a bootstrap it
+            // never earned — and with it permission to upload the old account's topics.
+            TopicSyncStore.shared.markCurrentAccountBootstrapped()
+        }
         // `.receive(on: DispatchQueue.main)` is load-bearing, not cosmetic. Both notifications
         // below are posted from background threads (NSPersistentStoreRemoteChange from Core Data's
         // history-processing queue, CKAccountChanged from CloudKit's own queue). This target builds
@@ -83,7 +103,10 @@ final class TopicSyncCoordinator {
         TopicSyncStore.shared.remove(baseUrl: baseUrl, topic: topic)
     }
 
-    private func reconcileFromRemote(mode: ReconcileMode) {
+    /// - Returns: whether the pass actually ran (`false` when it bailed out because the mirrored
+    ///   store isn't loaded, in which case nothing at all was reconciled).
+    @discardableResult
+    private func reconcileFromRemote(mode: ReconcileMode) -> Bool {
         if mode == .accountChange {
             hasBootstrappedCurrentAccount = false
         }
@@ -98,7 +121,7 @@ final class TopicSyncCoordinator {
         // also fires `didChangeNotification`.
         guard TopicSyncStore.shared.storeLoadedSuccessfully else {
             Log.w(tag, "TopicSync store is not loaded; skipping reconciliation (mode: \(mode))")
-            return
+            return false
         }
 
         let synced = TopicSyncStore.shared.allSyncedTopics()
@@ -152,12 +175,14 @@ final class TopicSyncCoordinator {
         if mode == .remoteChange {
             guard hasBootstrappedCurrentAccount else {
                 Log.w(tag, "Skipping \(localOnly.count) local-only deletion(s): the active iCloud account has not been bootstrapped in this session")
-                return
+                return true
             }
             for identity in localOnly {
                 guard let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }) else { continue }
                 SubscriptionManager(store: .shared).unsubscribe(subscription, syncToCloud: false)
             }
         }
+
+        return true
     }
 }
