@@ -23,6 +23,12 @@ struct SettingsView: View {
                     FirebaseConfigView()
                 }
                 Section(
+                    header: Text("iCloud"),
+                    footer: Text("Your subscribed topics sync automatically across your devices when you're signed into iCloud.")
+                ) {
+                    ICloudSyncSettingView()
+                }
+                Section(
                     header: Text("Appearance"),
                     footer: Text("Choose an alternate app icon.")
                 ) {
