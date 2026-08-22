@@ -41,11 +41,6 @@ struct SettingsView: View {
                     AttachmentAutoDownloadView()
                 }
                 Section(
-                    footer: Text("Max priority notifications break through to grab your attention, appearing on the lock screen and playing a sound even when focus mode is on or your device is muted.")
-                ) {
-                    CriticalAlertsSettingView()
-                }
-                Section(
                     header: Text("Users"),
                     footer: Text("To access read-protected topics, you may add or edit users here. All topics for a given server will use the same user.")
                 ) {
