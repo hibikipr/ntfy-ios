@@ -8,7 +8,12 @@ struct SubscriptionManager {
     private let tag = "SubscriptionManager"
     var store: Store
     
-    func subscribe(baseUrl: String, topic: String) {
+    /// - Parameter syncToCloud: `false` when this call is `TopicSyncCoordinator` *applying* a
+    ///   change that came from another device. That skips notifying the coordinator entirely,
+    ///   which is what keeps the change from echoing straight back out to iCloud. It replaces an
+    ///   earlier ambient "is a remote change being applied" flag, which couldn't work reliably
+    ///   because this method's coordinator call doesn't necessarily run inline with the caller.
+    func subscribe(baseUrl: String, topic: String, syncToCloud: Bool = true) {
         let normalizedBaseUrl = normalizeBaseUrl(baseUrl)
         let firebaseTopicName = firebaseTopic(baseUrl: normalizedBaseUrl, topic: topic)
         if FirebaseApp.app() != nil {
@@ -22,18 +27,32 @@ struct SubscriptionManager {
             }
         }
         let subscription = store.saveSubscription(baseUrl: normalizedBaseUrl, topic: topic)
-        MainActor.assumeIsolated {
-            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        if syncToCloud {
+            // Real subscribes come off a background queue (SubscriptionAddView dispatches to
+            // .global), so `MainActor.assumeIsolated` here would trap deterministically. A real
+            // async hop is safe now that reconciliation opts out via `syncToCloud: false` rather
+            // than relying on the coordinator observing an in-flight flag.
+            Task { @MainActor in
+                TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+            }
         }
         Task {
             await poll(subscription, notifyOnNewMessages: false)
         }
     }
 
-    func unsubscribe(_ subscription: Subscription) {
+    /// - Parameter syncToCloud: see `subscribe(baseUrl:topic:syncToCloud:)`. Passing `false` (which
+    ///   `TopicSyncCoordinator` does when applying a remote unsubscribe) skips the coordinator call
+    ///   outright, so there is nothing left to race with a concurrent re-subscribe import.
+    func unsubscribe(_ subscription: Subscription, syncToCloud: Bool = true) {
         Log.d(tag, "Unsubscribing from \(subscription.urlString())")
         let baseUrl = subscription.baseUrl
         let topic = subscription.topic
+        if syncToCloud, let baseUrl, let topic {
+            Task { @MainActor in
+                TopicSyncCoordinator.shared.localSubscriptionWasRemoved(baseUrl: baseUrl, topic: topic)
+            }
+        }
         DispatchQueue.main.async {
             if let baseUrl, let topic, FirebaseApp.app() != nil {
                 let firebaseTopicName = firebaseTopic(baseUrl: baseUrl, topic: topic)
@@ -44,9 +63,6 @@ struct SubscriptionManager {
                         Log.d(tag, "Firebase unsubscribe succeeded for \(firebaseTopicName)")
                     }
                 }
-            }
-            if let baseUrl, let topic {
-                TopicSyncCoordinator.shared.localSubscriptionWasRemoved(baseUrl: baseUrl, topic: topic)
             }
             store.delete(subscription: subscription)
         }

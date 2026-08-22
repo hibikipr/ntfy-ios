@@ -129,10 +129,16 @@ class Store: ObservableObject {
     // MARK: Subscriptions
     
     func saveSubscription(baseUrl: String, topic: String) -> Subscription {
-        let subscription = Subscription(context: context)
-        subscription.baseUrl = normalizeBaseUrl(baseUrl)
-        subscription.topic = topic
-        DispatchQueue.main.sync {
+        // `context.performAndWait`, not `DispatchQueue.main.sync`: this is called both from a
+        // background queue (SubscriptionAddView) and, since TopicSyncCoordinator's reconciliation
+        // now genuinely runs on the main actor, from the main thread — where `main.sync` would
+        // deadlock instantly. `performAndWait` is reentrant on the context's own queue, and also
+        // puts the object's creation on that queue instead of on the caller's thread.
+        var subscription: Subscription!
+        context.performAndWait {
+            subscription = Subscription(context: context)
+            subscription.baseUrl = normalizeBaseUrl(baseUrl)
+            subscription.topic = topic
             Log.d(Store.tag, "Storing subscription baseUrl=\(subscription.baseUrl ?? "?"), topic=\(topic)")
             try? context.save()
         }
@@ -144,10 +150,19 @@ class Store: ObservableObject {
     }
     
     func getSubscriptions() -> [Subscription]? {
-        return try? context.fetch(Subscription.fetchRequest())
+        // Wrapped in performAndWait like the rest of this class: TopicSyncCoordinator calls this
+        // during reconciliation, and a bare `context.fetch` would be a Core Data concurrency
+        // violation whenever the caller isn't on the context's confinement queue.
+        var subscriptions: [Subscription]?
+        context.performAndWait {
+            subscriptions = try? context.fetch(Subscription.fetchRequest())
+        }
+        return subscriptions
     }
 
-    func saveIcon(for subscription: Subscription, icon: String?) {
+    /// - Parameter syncToCloud: `false` when `TopicSyncCoordinator` is applying a change that came
+    ///   from another device, so the write isn't mirrored straight back out to iCloud.
+    func saveIcon(for subscription: Subscription, icon: String?, syncToCloud: Bool = true) {
         context.performAndWait {
             subscription.icon = (icon?.isEmpty ?? true) ? nil : icon
             try? context.save()
@@ -155,24 +170,30 @@ class Store: ObservableObject {
         #if !NTFY_NSE
         // TopicSyncCoordinator (CloudKit-backed) only exists in the main app target: the NSE
         // target has no iCloud/CloudKit entitlement and doesn't compile these sync sources, so
-        // this call must be compiled out there. saveIcon/saveDisplayName are only ever invoked
-        // from SwiftUI view actions or the coordinator's own reconciliation loop, both of which
-        // are already on the main actor, hence assumeIsolated instead of hopping via Task/async.
-        MainActor.assumeIsolated {
-            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        // this call must be compiled out there. The hop is a real `Task { @MainActor }` rather
+        // than `MainActor.assumeIsolated`, because this target builds in Swift 5 mode with no
+        // strict-concurrency checking — "the caller is already on the main actor" is an
+        // unenforced assumption here, and `assumeIsolated` traps at runtime when it's wrong.
+        if syncToCloud {
+            Task { @MainActor in
+                TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+            }
         }
         #endif
     }
 
-    func saveDisplayName(for subscription: Subscription, name: String?) {
+    /// - Parameter syncToCloud: see `saveIcon(for:icon:syncToCloud:)`.
+    func saveDisplayName(for subscription: Subscription, name: String?, syncToCloud: Bool = true) {
         context.performAndWait {
             let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             subscription.customDisplayName = trimmed.isEmpty ? nil : String(trimmed.prefix(64))
             try? context.save()
         }
         #if !NTFY_NSE
-        MainActor.assumeIsolated {
-            TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+        if syncToCloud {
+            Task { @MainActor in
+                TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+            }
         }
         #endif
     }
