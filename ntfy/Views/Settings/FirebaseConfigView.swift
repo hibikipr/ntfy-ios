@@ -54,8 +54,11 @@ struct FirebaseConfigView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        Button("Import GoogleService-Info.plist") {
+                        Button {
                             showImporter = true
+                        } label: {
+                            Text("Import GoogleService-Info.plist")
+                                .foregroundStyle(.primary)
                         }
 
                         if summary != nil {

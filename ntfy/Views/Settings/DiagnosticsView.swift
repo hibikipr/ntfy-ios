@@ -5,8 +5,11 @@ struct DiagnosticsView: View {
 
     var body: some View {
         Group {
-            Button("Share Logs") {
+            Button {
                 shareFile = LogExporter.mergedLogFile().map(ShareFile.init)
+            } label: {
+                Text("Share Logs")
+                    .foregroundStyle(.primary)
             }
             Button("Clear Logs", role: .destructive) {
                 LogExporter.clearLogs()
