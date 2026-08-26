@@ -20,7 +20,12 @@ final class TopicSyncStore {
     static let accountChangedNotification = NSNotification.Name("TopicSyncStore.accountChanged")
 
     /// Coarse "is topic sync actually working?" summary for the Settings status row. Being signed
-    /// into iCloud is necessary but not sufficient — the mirrored store also has to have loaded.
+    /// into iCloud is necessary but not sufficient — the mirrored *local* store also has to have
+    /// loaded, and CloudKit itself has to have finished `.setup` successfully. The last one is
+    /// its own condition, not implied by the first two: the local SQLite store loads regardless
+    /// of whether CloudKit ever connects, so without checking `.setup` explicitly, "Synced" could
+    /// (and did) survive a CloudKit container that was never actually reachable — e.g. a
+    /// Production build whose schema only exists in the Development CloudKit environment.
     enum SyncStatus {
         case notSignedIn
         case signedInButNotSyncing
@@ -48,6 +53,20 @@ final class TopicSyncStore {
     /// so guard it with a lock rather than assuming synchronous, same-thread delivery.
     private let stateLock = NSLock()
     private var storeLoadedSuccessfullyStorage = false
+    /// True from the moment a CloudKit `.setup` event reports failure until a later `.setup`
+    /// event reports success (self-healing: setup can succeed on a later attempt, e.g. once the
+    /// schema is actually promoted to the Production environment or connectivity returns).
+    ///
+    /// `.setup` only, not `.import`/`.export` — those fail transiently for all sorts of ordinary
+    /// reasons (a network blip mid-sync) that shouldn't flip "Synced" to "Not syncing" and back
+    /// on every hiccup. `.setup` failing means the container never got CloudKit-ready at all,
+    /// which is the specific, durable "sync is not going to work until something changes" case
+    /// this exists to catch — e.g. the schema existing in the Development CloudKit environment
+    /// but never having been promoted to Production, which a TestFlight/App Store build (always
+    /// Production) then can't use. That exact scenario was previously invisible: the *local*
+    /// SQLite store still loads fine regardless of whether CloudKit itself ever connected, so
+    /// storeLoadedSuccessful alone reported "Synced" no matter what .setup did.
+    private var cloudKitSetupFailedStorage = false
 
     /// True only once `loadPersistentStores` reported success for this container. Callers must
     /// consult this before interpreting an empty `allSyncedTopics()` result: without it, "the
@@ -59,9 +78,22 @@ final class TopicSyncStore {
         return storeLoadedSuccessfullyStorage
     }
 
+    private var cloudKitSetupFailed: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return cloudKitSetupFailedStorage
+    }
+
+    private func setCloudKitSetupFailed(_ value: Bool) {
+        stateLock.lock()
+        cloudKitSetupFailedStorage = value
+        stateLock.unlock()
+    }
+
     var syncStatus: SyncStatus {
         guard FileManager.default.ubiquityIdentityToken != nil else { return .notSignedIn }
-        return storeLoadedSuccessfully ? .synced : .signedInButNotSyncing
+        guard storeLoadedSuccessfully, !cloudKitSetupFailed else { return .signedInButNotSyncing }
+        return .synced
     }
 
     init(inMemory: Bool = false) {
@@ -128,13 +160,18 @@ final class TopicSyncStore {
             .sink { [weak self] _ in self?.handleAccountChanged() }
             .store(in: &cancellables)
 
-        // Kept purely as a diagnostic — deliberately no side effects. See above.
+        // Feeds cloudKitSetupFailedStorage — see that property's doc for why this needs to have a
+        // side effect at all (it didn't, before: setup failures were logged and otherwise ignored,
+        // which is how "Synced" could survive CloudKit never actually being reachable).
         NotificationCenter.default
             .publisher(for: NSPersistentCloudKitContainer.eventChangedNotification)
             .compactMap { $0.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey] as? NSPersistentCloudKitContainer.Event }
-            .filter { $0.type == .setup && $0.succeeded == false }
-            .sink { event in
-                Log.w(TopicSyncStore.tag, "CloudKit setup event reported failure: \(event.error?.localizedDescription ?? "<no error>")")
+            .filter { $0.type == .setup }
+            .sink { [weak self] event in
+                if !event.succeeded {
+                    Log.w(TopicSyncStore.tag, "CloudKit setup event reported failure: \(event.error?.localizedDescription ?? "<no error>")")
+                }
+                self?.setCloudKitSetupFailed(!event.succeeded)
             }
             .store(in: &cancellables)
     }
