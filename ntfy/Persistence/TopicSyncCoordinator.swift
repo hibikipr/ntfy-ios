@@ -139,6 +139,24 @@ final class TopicSyncCoordinator {
         let remoteOnly = TopicSyncDiff.remoteOnly(local: localIdentities, synced: syncedIdentities)
         let localOnly = TopicSyncDiff.localOnly(local: localIdentities, synced: syncedIdentities)
 
+        let syncedMetadata = synced.compactMap { syncedTopic -> TopicMetadata? in
+            guard let baseUrl = syncedTopic.baseUrl, let topic = syncedTopic.topic else { return nil }
+            return TopicMetadata(
+                identity: TopicIdentity(baseUrl: baseUrl, topic: topic),
+                customDisplayName: syncedTopic.customDisplayName,
+                icon: syncedTopic.icon
+            )
+        }
+        let localMetadata = local.compactMap { subscription -> TopicMetadata? in
+            guard let baseUrl = subscription.baseUrl, let topic = subscription.topic else { return nil }
+            return TopicMetadata(
+                identity: TopicIdentity(baseUrl: baseUrl, topic: topic),
+                customDisplayName: subscription.customDisplayName,
+                icon: subscription.icon
+            )
+        }
+        let metadataChanged = TopicSyncDiff.metadataChanged(local: localMetadata, synced: syncedMetadata)
+
         // Upload only on the first pass of a launch. On an account change we deliberately do not
         // push the previous account's topics into the new account (see ReconcileMode.accountChange),
         // and on a plain remote change everything local has already been uploaded.
@@ -163,6 +181,23 @@ final class TopicSyncCoordinator {
             SubscriptionManager(store: .shared).subscribe(baseUrl: identity.baseUrl, topic: identity.topic, syncToCloud: false)
             guard
                 let subscription = Store.shared.getSubscription(baseUrl: identity.baseUrl, topic: identity.topic),
+                let syncedTopic = synced.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic })
+            else { continue }
+            Store.shared.saveDisplayName(for: subscription, name: syncedTopic.customDisplayName, syncToCloud: false)
+            Store.shared.saveIcon(for: subscription, icon: syncedTopic.icon, syncToCloud: false)
+        }
+
+        // Present on both sides already, but the synced name/icon differs from what's stored
+        // locally: a rename/icon change made on another device. Runs in every mode, not just
+        // .remoteChange — pulling down a metadata update for a topic this device already has is
+        // safe regardless of why reconciliation fired, unlike the subscribe/unsubscribe cases
+        // above which do need to be mode-gated. Local's own edits never appear here: they're
+        // already pushed out via localSubscriptionDidChange the moment they happen, not deferred
+        // to this pass, so by the time this runs, "local differs from synced" only ever means
+        // "synced has something local hasn't applied yet."
+        for identity in metadataChanged {
+            guard
+                let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }),
                 let syncedTopic = synced.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic })
             else { continue }
             Store.shared.saveDisplayName(for: subscription, name: syncedTopic.customDisplayName, syncToCloud: false)
