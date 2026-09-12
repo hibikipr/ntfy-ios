@@ -113,7 +113,7 @@ struct SubscriptionListView: View {
 struct SubscriptionItemNavView: View {
     @EnvironmentObject private var store: Store
     @ObservedObject var subscription: Subscription
-    @State private var unsubscribeAlert = false
+    @State private var pendingUnsubscribe: Subscription?
 
     private var subscriptionManager: SubscriptionManager {
         return SubscriptionManager(store: store)
@@ -125,25 +125,19 @@ struct SubscriptionItemNavView: View {
         }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
-                self.unsubscribeAlert = true
+                self.pendingUnsubscribe = subscription
             } label: {
                 Label("Delete", systemImage: "trash.circle")
             }
         }
-        .alert(isPresented: $unsubscribeAlert) {
-            Alert(
-                title: Text("Unsubscribe"),
-                message: Text("Do you really want to unsubscribe from this topic and delete all of the notifications you received?"),
-                primaryButton: .destructive(
-                    Text("Unsubscribe"),
-                    action: {
-                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                        self.subscriptionManager.unsubscribe(subscription)
-                        self.unsubscribeAlert = false
-                    }
-                ),
-                secondaryButton: .cancel()
-            )
+        .alert("Unsubscribe", item: $pendingUnsubscribe) { subscriptionToUnsubscribe in
+            Button("Unsubscribe", role: .destructive) {
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                self.subscriptionManager.unsubscribe(subscriptionToUnsubscribe)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { _ in
+            Text("Do you really want to unsubscribe from this topic and delete all of the notifications you received?")
         }
     }
 }
