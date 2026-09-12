@@ -140,6 +140,7 @@ class Store: ObservableObject {
         // group. Gating on `.standard` would let the NSE's first launch since an update re-run this
         // backfill and clobber any manual reordering the user had already done in the app.
         guard !Store.sharedDefaults.bool(forKey: Store.sharedDefaultsKeyDidBackfillSortRank) else { return }
+        var didSave = false
         context.performAndWait {
             let request = Subscription.fetchRequest()
             request.sortDescriptors = [NSSortDescriptor(key: "topic", ascending: true)]
@@ -147,8 +148,17 @@ class Store: ObservableObject {
             for (index, subscription) in subscriptions.enumerated() {
                 subscription.sortRank = Double(index)
             }
-            try? context.save()
+            do {
+                try context.save()
+                didSave = true
+            } catch {
+                Log.w(Store.tag, "Failed to backfill sortRank", error)
+            }
         }
+        // Only mark this done once the save actually succeeded — a save failure leaves every
+        // subscription's rank at the Core Data migration default, and this flag must stay unset
+        // so the backfill retries on the next launch instead of being permanently skipped.
+        guard didSave else { return }
         Store.sharedDefaults.set(true, forKey: Store.sharedDefaultsKeyDidBackfillSortRank)
     }
 
