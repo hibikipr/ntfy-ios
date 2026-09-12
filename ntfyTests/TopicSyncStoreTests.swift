@@ -25,6 +25,22 @@ final class TopicSyncStoreTests: XCTestCase {
         XCTAssertEqual(topics.first?.icon, "🔔")
     }
 
+    func testUpsertThenFetchRoundTripsSortRank() {
+        let store = TopicSyncStore(inMemory: true)
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔", sortRank: 2.5)
+
+        let topics = store.allSyncedTopics()
+        XCTAssertEqual(topics.first?.sortRank?.doubleValue, 2.5)
+    }
+
+    func testUpsertWithoutSortRankLeavesItNil() {
+        let store = TopicSyncStore(inMemory: true)
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔")
+
+        let topics = store.allSyncedTopics()
+        XCTAssertNil(topics.first?.sortRank)
+    }
+
     func testRemoveDeletesTheMatchingTopicOnly() {
         let store = TopicSyncStore(inMemory: true)
         store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: nil, icon: nil)

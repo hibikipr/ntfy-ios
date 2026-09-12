@@ -194,7 +194,7 @@ final class TopicSyncStore {
         return result
     }
 
-    func upsert(baseUrl: String, topic: String, customDisplayName: String?, icon: String?) {
+    func upsert(baseUrl: String, topic: String, customDisplayName: String?, icon: String?, sortRank: Double? = nil) {
         context.performAndWait {
             let recordName = "\(baseUrl)|\(topic)"
             let syncedTopic = (try? fetchByRecordName(recordName)) ?? SyncedTopic(context: context)
@@ -203,6 +203,7 @@ final class TopicSyncStore {
             syncedTopic.topic = topic
             syncedTopic.customDisplayName = customDisplayName
             syncedTopic.icon = icon
+            syncedTopic.sortRank = sortRank.map { NSNumber(value: $0) }
             syncedTopic.lastModified = Date()
             try? context.save()
         }
