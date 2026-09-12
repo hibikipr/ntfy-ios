@@ -61,6 +61,7 @@ struct NotificationListView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
         .searchable(text: $searchText, prompt: "Search notifications")
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.editMode, self.$editMode)
