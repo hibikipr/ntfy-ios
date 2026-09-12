@@ -93,7 +93,8 @@ final class TopicSyncCoordinator {
             baseUrl: baseUrl,
             topic: topic,
             customDisplayName: subscription.customDisplayName,
-            icon: subscription.icon
+            icon: subscription.icon,
+            sortRank: subscription.sortRank
         )
     }
 
@@ -144,7 +145,8 @@ final class TopicSyncCoordinator {
             return TopicMetadata(
                 identity: TopicIdentity(baseUrl: baseUrl, topic: topic),
                 customDisplayName: syncedTopic.customDisplayName,
-                icon: syncedTopic.icon
+                icon: syncedTopic.icon,
+                sortRank: syncedTopic.sortRank?.doubleValue
             )
         }
         let localMetadata = local.compactMap { subscription -> TopicMetadata? in
@@ -152,7 +154,8 @@ final class TopicSyncCoordinator {
             return TopicMetadata(
                 identity: TopicIdentity(baseUrl: baseUrl, topic: topic),
                 customDisplayName: subscription.customDisplayName,
-                icon: subscription.icon
+                icon: subscription.icon,
+                sortRank: subscription.sortRank
             )
         }
         let metadataChanged = TopicSyncDiff.metadataChanged(local: localMetadata, synced: syncedMetadata)
@@ -167,7 +170,8 @@ final class TopicSyncCoordinator {
                     baseUrl: identity.baseUrl,
                     topic: identity.topic,
                     customDisplayName: subscription.customDisplayName,
-                    icon: subscription.icon
+                    icon: subscription.icon,
+                    sortRank: subscription.sortRank
                 )
             }
             hasBootstrappedCurrentAccount = true
@@ -185,6 +189,7 @@ final class TopicSyncCoordinator {
             else { continue }
             Store.shared.saveDisplayName(for: subscription, name: syncedTopic.customDisplayName, syncToCloud: false)
             Store.shared.saveIcon(for: subscription, icon: syncedTopic.icon, syncToCloud: false)
+            Store.shared.saveSortRank(for: subscription, rank: syncedTopic.sortRank?.doubleValue ?? subscription.sortRank, syncToCloud: false)
         }
 
         // Present on both sides already, but the synced name/icon differs from what's stored
@@ -202,6 +207,7 @@ final class TopicSyncCoordinator {
             else { continue }
             Store.shared.saveDisplayName(for: subscription, name: syncedTopic.customDisplayName, syncToCloud: false)
             Store.shared.saveIcon(for: subscription, icon: syncedTopic.icon, syncToCloud: false)
+            Store.shared.saveSortRank(for: subscription, rank: syncedTopic.sortRank?.doubleValue ?? subscription.sortRank, syncToCloud: false)
         }
 
         // Local has it, remote doesn't, on an already-bootstrapped account: someone unsubscribed on
