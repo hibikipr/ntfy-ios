@@ -81,6 +81,8 @@
 		FD2AF041302D215900FC60F2 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FD2AF040302D215900FC60F2 /* FirebaseMessaging */; };
 		FD306D2730556D2C00878E06 /* TopicRank.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD306D2630556D2C00878E06 /* TopicRank.swift */; };
 		FD306D2930556D3000878E06 /* TopicRankTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD306D2830556D3000878E06 /* TopicRankTests.swift */; };
+		FD306D2D3055717100878E06 /* TopicEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD306D2B30556FEE00878E06 /* TopicEntity.swift */; };
+		FD306D2E3055717100878E06 /* TopicEntityQuery.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD306D2C30556FEF00878E06 /* TopicEntityQuery.swift */; };
 		FD3DE5623038BB5E00B23FC4 /* TopicSyncDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE5613038BB5E00B23FC4 /* TopicSyncDiffTests.swift */; };
 		FD3DE5643038BB7D00B23FC4 /* TopicSyncDiff.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE5633038BB7D00B23FC4 /* TopicSyncDiff.swift */; };
 		FD3DE60D3038FDF900B23FC4 /* TopicSync.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = FD3DE60A3038FDF900B23FC4 /* TopicSync.xcdatamodeld */; };
@@ -189,6 +191,8 @@
 		ECEF013BCA9E43C60D6FB474 /* AppIconOption.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppIconOption.swift; sourceTree = "<group>"; };
 		FD306D2630556D2C00878E06 /* TopicRank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicRank.swift; sourceTree = "<group>"; };
 		FD306D2830556D3000878E06 /* TopicRankTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicRankTests.swift; sourceTree = "<group>"; };
+		FD306D2B30556FEE00878E06 /* TopicEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicEntity.swift; sourceTree = "<group>"; };
+		FD306D2C30556FEF00878E06 /* TopicEntityQuery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicEntityQuery.swift; sourceTree = "<group>"; };
 		FD3DE5613038BB5E00B23FC4 /* TopicSyncDiffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicSyncDiffTests.swift; sourceTree = "<group>"; };
 		FD3DE5633038BB7D00B23FC4 /* TopicSyncDiff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TopicSyncDiff.swift; sourceTree = "<group>"; };
 		FD3DE60B3038FDF900B23FC4 /* TopicSync.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = TopicSync.xcdatamodel; sourceTree = "<group>"; };
@@ -281,6 +285,7 @@
 				9474F1BE282F2AA700CDE4DD /* Products */,
 				9474F1DD282F3A2E00CDE4DD /* Frameworks */,
 				D8A9DA431ACC761D4D35ED8C /* ntfyTests */,
+				FD306D2A30556FEE00878E06 /* AppIntents */,
 			);
 			sourceTree = "<group>";
 		};
@@ -428,6 +433,15 @@
 			path = ntfyTests;
 			sourceTree = "<group>";
 		};
+		FD306D2A30556FEE00878E06 /* AppIntents */ = {
+			isa = PBXGroup;
+			children = (
+				FD306D2B30556FEE00878E06 /* TopicEntity.swift */,
+				FD306D2C30556FEF00878E06 /* TopicEntityQuery.swift */,
+			);
+			path = AppIntents;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -563,6 +577,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FD306D2D3055717100878E06 /* TopicEntity.swift in Sources */,
+				FD306D2E3055717100878E06 /* TopicEntityQuery.swift in Sources */,
 				2939B2162F8F293C00A52946 /* UserRowView.swift in Sources */,
 				FD9497F7302F445C00E1AA61 /* FirebaseConfigView.swift in Sources */,
 				2939B2172F8F293C00A52946 /* UserEditorView.swift in Sources */,
