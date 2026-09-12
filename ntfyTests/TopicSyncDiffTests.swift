@@ -81,4 +81,25 @@ final class TopicSyncDiffTests: XCTestCase {
         let synced = [TopicMetadata(identity: identity, customDisplayName: "New Name", icon: nil)]
         XCTAssertEqual(TopicSyncDiff.metadataChanged(local: local, synced: synced), [identity])
     }
+
+    func testMetadataChangedDetectsSortRankChange() {
+        let identity = TopicIdentity(baseUrl: "https://ntfy.sh", topic: "alerts")
+        let local = [TopicMetadata(identity: identity, customDisplayName: nil, icon: nil, sortRank: 0)]
+        let synced = [TopicMetadata(identity: identity, customDisplayName: nil, icon: nil, sortRank: 1)]
+        XCTAssertEqual(TopicSyncDiff.metadataChanged(local: local, synced: synced), [identity])
+    }
+
+    func testMetadataChangedIgnoresIdenticalSortRank() {
+        let identity = TopicIdentity(baseUrl: "https://ntfy.sh", topic: "alerts")
+        let local = [TopicMetadata(identity: identity, customDisplayName: "Same", icon: "bell", sortRank: 2)]
+        let synced = [TopicMetadata(identity: identity, customDisplayName: "Same", icon: "bell", sortRank: 2)]
+        XCTAssertTrue(TopicSyncDiff.metadataChanged(local: local, synced: synced).isEmpty)
+    }
+
+    func testMetadataChangedTreatsNilAndSetSortRankAsDifferent() {
+        let identity = TopicIdentity(baseUrl: "https://ntfy.sh", topic: "alerts")
+        let local = [TopicMetadata(identity: identity, customDisplayName: nil, icon: nil, sortRank: nil)]
+        let synced = [TopicMetadata(identity: identity, customDisplayName: nil, icon: nil, sortRank: 3)]
+        XCTAssertEqual(TopicSyncDiff.metadataChanged(local: local, synced: synced), [identity])
+    }
 }

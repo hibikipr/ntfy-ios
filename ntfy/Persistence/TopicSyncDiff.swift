@@ -15,6 +15,7 @@ struct TopicMetadata: Hashable {
     let identity: TopicIdentity
     let customDisplayName: String?
     let icon: String?
+    var sortRank: Double? = nil
 }
 
 /// Pure set-difference logic used by `TopicSyncCoordinator` to reconcile the local
@@ -47,6 +48,7 @@ enum TopicSyncDiff {
             guard let localEntry = localByIdentity[remote.identity] else { return nil }
             let changed = localEntry.customDisplayName != remote.customDisplayName
                 || localEntry.icon != remote.icon
+                || localEntry.sortRank != remote.sortRank
             return changed ? remote.identity : nil
         }
     }
