@@ -44,6 +44,7 @@ class Store: ObservableObject {
     static let autoDownload50MB = Constants.autoDownload50MB
     private static let sharedDefaults = UserDefaults(suiteName: Store.appGroup)!
     private static let sharedDefaultsKeyCriticalAlertsAuthorized = "criticalAlertsAuthorized"
+    private static let sharedDefaultsKeyDidBackfillSortRank = "Store.didBackfillSortRank"
     private let container: NSPersistentContainer
     var context: NSManagedObjectContext {
         return container.viewContext
@@ -133,8 +134,12 @@ class Store: ObservableObject {
     /// this feature existed) exactly once, so nobody's topic list visibly reshuffles the moment
     /// they update. Gated by a UserDefaults flag so it never runs a second time.
     private func backfillSortRankIfNeeded() {
-        let defaultsKey = "Store.didBackfillSortRank"
-        guard !UserDefaults.standard.bool(forKey: defaultsKey) else { return }
+        // `Store.sharedDefaults` (app-group backed), not `UserDefaults.standard`: `Store.shared` is
+        // instantiated independently in both the app and the NSE extension process, and
+        // `UserDefaults.standard` is NOT shared between an app and its extension without an app
+        // group. Gating on `.standard` would let the NSE's first launch since an update re-run this
+        // backfill and clobber any manual reordering the user had already done in the app.
+        guard !Store.sharedDefaults.bool(forKey: Store.sharedDefaultsKeyDidBackfillSortRank) else { return }
         context.performAndWait {
             let request = Subscription.fetchRequest()
             request.sortDescriptors = [NSSortDescriptor(key: "topic", ascending: true)]
@@ -144,7 +149,7 @@ class Store: ObservableObject {
             }
             try? context.save()
         }
-        UserDefaults.standard.set(true, forKey: defaultsKey)
+        Store.sharedDefaults.set(true, forKey: Store.sharedDefaultsKeyDidBackfillSortRank)
     }
 
     // MARK: Subscriptions
