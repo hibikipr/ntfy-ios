@@ -14,6 +14,7 @@
         <attribute name="topic" optional="YES" attributeType="String"/>
         <attribute name="customDisplayName" optional="YES" attributeType="String"/>
         <attribute name="icon" optional="YES" attributeType="String"/>
+        <attribute name="sortRank" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
         <attribute name="lastModified" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
     </entity>
     <elements>
