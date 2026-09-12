@@ -174,6 +174,30 @@ final class TopicSyncCoordinator {
                     sortRank: subscription.sortRank
                 )
             }
+            // Existing installs upgrading to this feature already had every topic present on
+            // both sides (sync was already working before ranks existed), so `localOnly` is
+            // empty for them and the loop above never runs. Without this, Store's one-time
+            // sortRank backfill never reaches the synced store: local sortRank (a non-optional
+            // Double) would keep differing from synced sortRank (nil) forever, which
+            // `metadataChanged` below would flag as "changed" on every single reconcile pass
+            // rather than once, and other devices would never receive the baseline order at all.
+            // Upload the local rank for any topic present on both sides whose synced entry has
+            // no rank yet. Once uploaded, `syncedTopic.sortRank` is no longer nil, so this can't
+            // re-trigger on a later pass.
+            for identity in localIdentities where !localOnly.contains(identity) {
+                guard
+                    let subscription = local.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }),
+                    let syncedTopic = synced.first(where: { $0.baseUrl == identity.baseUrl && $0.topic == identity.topic }),
+                    syncedTopic.sortRank == nil
+                else { continue }
+                TopicSyncStore.shared.upsert(
+                    baseUrl: identity.baseUrl,
+                    topic: identity.topic,
+                    customDisplayName: syncedTopic.customDisplayName,
+                    icon: syncedTopic.icon,
+                    sortRank: subscription.sortRank
+                )
+            }
             hasBootstrappedCurrentAccount = true
         }
 
