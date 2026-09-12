@@ -57,6 +57,10 @@ struct SubscriptionListView: View {
             ForEach(subscriptionsModel.subscriptions) { subscription in
                 SubscriptionItemNavView(subscription: subscription)
             }
+            .reorderable()
+        }
+        .reorderContainer(for: Subscription.self) { difference in
+            applyReorder(difference)
         }
         .listStyle(.insetGrouped)
         .refreshable {
@@ -107,6 +111,26 @@ struct SubscriptionListView: View {
                 }
             }
         }
+    }
+
+    private func applyReorder(_ difference: ReorderDifference<Subscription.ID, ReorderableSingleCollectionIdentifier>) {
+        guard let movedID = difference.sources.first else { return }
+        let subscriptions = subscriptionsModel.subscriptions
+        guard let moved = subscriptions.first(where: { $0.id == movedID }) else { return }
+
+        let remaining = subscriptions.filter { $0.id != movedID }
+        let remainingRanks = remaining.map(\.sortRank)
+
+        let destinationIndex: Int
+        switch difference.destination.position {
+        case .end:
+            destinationIndex = remaining.count
+        case .before(let id):
+            destinationIndex = remaining.firstIndex { $0.id == id } ?? remaining.count
+        }
+
+        let newRank = TopicRank.rank(insertingBefore: destinationIndex, in: remainingRanks)
+        store.saveSortRank(for: moved, rank: newRank)
     }
 }
 

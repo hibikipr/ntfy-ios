@@ -13,7 +13,7 @@ class SubscriptionsObservable: NSObject, ObservableObject {
 
     private lazy var fetchedResultsController: NSFetchedResultsController<Subscription> = {
         let fetchRequest: NSFetchRequest<Subscription> = Subscription.fetchRequest()
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "topic", ascending: true)]
+        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "sortRank", ascending: true)]
 
         let controller = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: Store.shared.context, sectionNameKeyPath: nil, cacheName: nil)
         controller.delegate = self
