@@ -14,13 +14,10 @@ struct PublishMessageIntent: AppIntent {
     @Parameter(title: "Title", default: nil)
     var messageTitle: String?
 
+    @MainActor
     func perform() async throws -> some IntentResult {
-        let (subscription, user) = await MainActor.run {
-            (
-                Store.shared.getSubscription(baseUrl: topic.baseUrl, topic: topic.topic),
-                Store.shared.getBasicUser(baseUrl: topic.baseUrl)
-            )
-        }
+        let subscription = Store.shared.getSubscription(baseUrl: topic.baseUrl, topic: topic.topic)
+        let user = Store.shared.getBasicUser(baseUrl: topic.baseUrl)
         guard let subscription else {
             throw PublishMessageIntentError.topicNoLongerSubscribed
         }
