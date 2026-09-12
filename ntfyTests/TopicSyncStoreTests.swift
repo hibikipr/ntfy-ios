@@ -4,7 +4,7 @@ import XCTest
 final class TopicSyncStoreTests: XCTestCase {
     func testUpsertThenFetchReturnsTheSameTopic() {
         let store = TopicSyncStore(inMemory: true)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔")
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔", sortRank: nil)
 
         let topics = store.allSyncedTopics()
         XCTAssertEqual(topics.count, 1)
@@ -16,8 +16,8 @@ final class TopicSyncStoreTests: XCTestCase {
 
     func testUpsertTwiceForSameTopicUpdatesInPlaceInsteadOfDuplicating() {
         let store = TopicSyncStore(inMemory: true)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: nil)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Renamed", icon: "🔔")
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: nil, sortRank: nil)
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Renamed", icon: "🔔", sortRank: nil)
 
         let topics = store.allSyncedTopics()
         XCTAssertEqual(topics.count, 1)
@@ -35,7 +35,7 @@ final class TopicSyncStoreTests: XCTestCase {
 
     func testUpsertWithoutSortRankLeavesItNil() {
         let store = TopicSyncStore(inMemory: true)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔")
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: "Alerts", icon: "🔔", sortRank: nil)
 
         let topics = store.allSyncedTopics()
         XCTAssertNil(topics.first?.sortRank)
@@ -43,8 +43,8 @@ final class TopicSyncStoreTests: XCTestCase {
 
     func testRemoveDeletesTheMatchingTopicOnly() {
         let store = TopicSyncStore(inMemory: true)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: nil, icon: nil)
-        store.upsert(baseUrl: "https://ntfy.sh", topic: "backups", customDisplayName: nil, icon: nil)
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "alerts", customDisplayName: nil, icon: nil, sortRank: nil)
+        store.upsert(baseUrl: "https://ntfy.sh", topic: "backups", customDisplayName: nil, icon: nil, sortRank: nil)
 
         store.remove(baseUrl: "https://ntfy.sh", topic: "alerts")
 

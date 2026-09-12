@@ -194,7 +194,9 @@ final class TopicSyncStore {
         return result
     }
 
-    func upsert(baseUrl: String, topic: String, customDisplayName: String?, icon: String?, sortRank: Double? = nil) {
+    /// `sortRank` is deliberately not defaulted, like `customDisplayName`/`icon` — a caller that
+    /// forgets to pass it would otherwise silently wipe the synced rank for this topic.
+    func upsert(baseUrl: String, topic: String, customDisplayName: String?, icon: String?, sortRank: Double?) {
         context.performAndWait {
             let recordName = "\(baseUrl)|\(topic)"
             let syncedTopic = (try? fetchByRecordName(recordName)) ?? SyncedTopic(context: context)
