@@ -6,6 +6,7 @@ class NotificationsObservable: NSObject, ObservableObject {
     private let tag = "NotificationsObservable"
     private var subscriptionID: NSManagedObjectID
     private var cancellables: Set<AnyCancellable> = []
+    private var hasStructuralChange = false
 
     private lazy var fetchedResultsController: NSFetchedResultsController<Notification> = {
         let fetchRequest: NSFetchRequest<Notification> = Notification.fetchRequest()
@@ -51,12 +52,41 @@ class NotificationsObservable: NSObject, ObservableObject {
 }
 
 extension NotificationsObservable: NSFetchedResultsControllerDelegate {
+    func controllerWillChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
+        hasStructuralChange = false
+    }
+
+    // Distinguishes a genuine insert/delete/move (worth animating) from a plain attribute update
+    // like `markRead` flipping `isRead` — animating a full list re-diff on every read-marking is
+    // what was causing the scroll-time jank.
+    func controller(
+        _ controller: NSFetchedResultsController<NSFetchRequestResult>,
+        didChange anObject: Any,
+        at indexPath: IndexPath?,
+        for type: NSFetchedResultsChangeType,
+        newIndexPath: IndexPath?
+    ) {
+        switch type {
+        case .insert, .delete, .move:
+            hasStructuralChange = true
+        case .update:
+            break
+        @unknown default:
+            hasStructuralChange = true
+        }
+    }
+
     func controllerDidChangeContent(_ controller: NSFetchedResultsController<NSFetchRequestResult>) {
         let fetched = self.fetchedResultsController.fetchedObjects ?? []
         let unread = fetched.filter { !$0.isRead }.count
         Log.d(tag, "Content changed for subscription \(subscriptionID), count=\(fetched.count), unread=\(unread)")
+        let shouldAnimate = hasStructuralChange
         DispatchQueue.main.async {
-            withAnimation {
+            if shouldAnimate {
+                withAnimation {
+                    self.notifications = fetched
+                }
+            } else {
                 self.notifications = fetched
             }
         }

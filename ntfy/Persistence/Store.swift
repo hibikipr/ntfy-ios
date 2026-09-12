@@ -336,12 +336,15 @@ class Store: ObservableObject {
 
     func markRead(_ notification: Notification) {
         guard !notification.isRead else { return }
-        context.performAndWait {
+        // `perform`, not `performAndWait`: this is called from `onDisappear` while scrolling, and
+        // no caller waits on a return value. Running it synchronously blocked the main thread
+        // (mutate + save + badge-count fetch) on the same run loop turn as the scroll, causing jank.
+        context.perform {
             notification.isRead = true
             do {
-                try context.save()
+                try self.context.save()
                 Log.d(Store.tag, "Marked notification \(notification.id ?? "?") as read")
-                syncBadgeCount()
+                self.syncBadgeCount()
             } catch {
                 Log.w(Store.tag, "Failed to save isRead for notification \(notification.id ?? "?")", error)
             }
