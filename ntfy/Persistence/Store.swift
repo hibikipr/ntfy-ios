@@ -92,9 +92,10 @@ class Store: ObservableObject {
           }
           .store(in: &cancellables)
 
+        backfillSortRankIfNeeded()
         unreadCount = unreadNotificationCount()
     }
-    
+
     func rollbackAndRefresh() {
         // Hack: We refresh all objects, since failing to store a notification usually means
         // that the app extension stored the notification first. This is a way to update the
@@ -126,6 +127,26 @@ class Store: ObservableObject {
         NotificationCenter.default.post(name: Store.didHardRefreshNotification, object: self)
     }
 
+    /// Existing installs upgrading to this version have every `Subscription.sortRank` at its
+    /// migration default of `0`. Backfill each one to its position in the *current* display
+    /// order (alphabetical by topic, matching what `SubscriptionsObservable` sorted by before
+    /// this feature existed) exactly once, so nobody's topic list visibly reshuffles the moment
+    /// they update. Gated by a UserDefaults flag so it never runs a second time.
+    private func backfillSortRankIfNeeded() {
+        let defaultsKey = "Store.didBackfillSortRank"
+        guard !UserDefaults.standard.bool(forKey: defaultsKey) else { return }
+        context.performAndWait {
+            let request = Subscription.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "topic", ascending: true)]
+            let subscriptions = (try? context.fetch(request)) ?? []
+            for (index, subscription) in subscriptions.enumerated() {
+                subscription.sortRank = Double(index)
+            }
+            try? context.save()
+        }
+        UserDefaults.standard.set(true, forKey: defaultsKey)
+    }
+
     // MARK: Subscriptions
     
     func saveSubscription(baseUrl: String, topic: String) -> Subscription {
@@ -136,9 +157,12 @@ class Store: ObservableObject {
         // puts the object's creation on that queue instead of on the caller's thread.
         var subscription: Subscription!
         context.performAndWait {
+            // New topics land at the end of the manually-ordered list.
+            let maxRank = ((try? context.fetch(Subscription.fetchRequest())) ?? []).map(\.sortRank).max() ?? -1
             subscription = Subscription(context: context)
             subscription.baseUrl = normalizeBaseUrl(baseUrl)
             subscription.topic = topic
+            subscription.sortRank = maxRank + 1
             Log.d(Store.tag, "Storing subscription baseUrl=\(subscription.baseUrl ?? "?"), topic=\(topic)")
             try? context.save()
         }
@@ -187,6 +211,21 @@ class Store: ObservableObject {
         context.performAndWait {
             let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             subscription.customDisplayName = trimmed.isEmpty ? nil : String(trimmed.prefix(64))
+            try? context.save()
+        }
+        #if !NTFY_NSE
+        if syncToCloud {
+            Task { @MainActor in
+                TopicSyncCoordinator.shared.localSubscriptionDidChange(subscription)
+            }
+        }
+        #endif
+    }
+
+    /// - Parameter syncToCloud: see `saveIcon(for:icon:syncToCloud:)`.
+    func saveSortRank(for subscription: Subscription, rank: Double, syncToCloud: Bool = true) {
+        context.performAndWait {
+            subscription.sortRank = rank
             try? context.save()
         }
         #if !NTFY_NSE
