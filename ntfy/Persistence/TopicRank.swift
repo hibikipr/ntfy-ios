@@ -20,6 +20,16 @@ enum TopicRank {
         if destinationIndex >= orderedRanks.count {
             return orderedRanks[orderedRanks.count - 1] + 1
         }
+        if orderedRanks[destinationIndex - 1] == orderedRanks[destinationIndex] {
+            // Equal neighbors (reachable in practice: two devices independently computing the
+            // same `maxRank + 1` before syncing, or a backfill save silently failing and leaving
+            // every rank at the migration default): the ordinary midpoint below would just
+            // average two equal numbers back to the same value, making the moved item
+            // indistinguishable from its neighbors and the drag a silent no-op. Nudge below the
+            // upper neighbor instead, so the moved item sorts strictly ahead of the tie under
+            // SubscriptionsObservable's secondary `topic` sort.
+            return orderedRanks[destinationIndex] - 0.000001
+        }
         return (orderedRanks[destinationIndex - 1] + orderedRanks[destinationIndex]) / 2
     }
 }
