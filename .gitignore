@@ -4,3 +4,4 @@ ntfy.xcodeproj/xcuserdata
 ntfy.xcodeproj/project.xcworkspace/xcuserdata/
 .worktrees/
 .claude/settings.local.json
+.build/

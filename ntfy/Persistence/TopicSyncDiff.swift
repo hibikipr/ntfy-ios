@@ -15,6 +15,11 @@ struct TopicMetadata: Hashable {
     let identity: TopicIdentity
     let customDisplayName: String?
     let icon: String?
+    // `var`, not `let` like its siblings above: a `let` stored property with a default value did
+    // not get a default parameter in this struct's synthesized memberwise initializer in this
+    // codebase/toolchain — confirmed by direct reproduction while implementing this feature, not
+    // a guess or a stale build cache artifact. Don't "clean this up" back to `let` without
+    // re-verifying that quirk is actually gone.
     var sortRank: Double? = nil
 }
 
