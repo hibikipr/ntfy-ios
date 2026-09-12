@@ -2,10 +2,18 @@ import SwiftUI
 import UniformTypeIdentifiers
 import UIKit
 
-enum ActiveAlert {
+private enum PendingAlert: Identifiable {
     case clear, unsubscribe, selected
-}
+    var id: Self { self }
 
+    var title: String {
+        switch self {
+        case .clear: return "Clear notifications"
+        case .unsubscribe: return "Unsubscribe"
+        case .selected: return "Delete"
+        }
+    }
+}
 
 struct NotificationListView: View {
     private let tag = "NotificationListView"
@@ -20,8 +28,7 @@ struct NotificationListView: View {
     @State private var editMode = EditMode.inactive
     @State private var selection = Set<Notification>()
 
-    @State private var showAlert = false
-    @State private var activeAlert: ActiveAlert = .clear
+    @State private var pendingAlert: PendingAlert?
     @State private var showCopiedConfirmation = false
     @State private var searchText = ""
 
@@ -76,13 +83,11 @@ struct NotificationListView: View {
                         }
                         if notificationsModel.notifications.count > 0 {
                             Button("Clear all notifications") {
-                                self.showAlert = true
-                                self.activeAlert = .clear
+                                self.pendingAlert = .clear
                             }
                         }
                         Button("Unsubscribe") {
-                            self.showAlert = true
-                            self.activeAlert = .unsubscribe
+                            self.pendingAlert = .unsubscribe
                         }
                     } label: {
                         Label("More", systemImage: "ellipsis.circle")
@@ -93,8 +98,7 @@ struct NotificationListView: View {
             ToolbarItem(placement: .navigationBarLeading) {
                 if (self.editMode == .active) {
                     Button(action: {
-                        self.showAlert = true
-                        self.activeAlert = .selected
+                        self.pendingAlert = .selected
                     }) {
                         Text("Delete")
                             .foregroundStyle(.red)
@@ -102,35 +106,26 @@ struct NotificationListView: View {
                 }
             }
         }
-        .alert(isPresented: $showAlert) {
-            switch activeAlert {
+        .alert(pendingAlert?.title ?? "", item: $pendingAlert) { alert in
+            switch alert {
             case .clear:
-                return Alert(
-                    title: Text("Clear notifications"),
-                    message: Text("Do you really want to delete all of the notifications in this topic?"),
-                    primaryButton: .destructive(
-                        Text("Permanently delete"),
-                        action: deleteAll
-                    ),
-                    secondaryButton: .cancel())
+                Button("Permanently delete", role: .destructive, action: deleteAll)
+                Button("Cancel", role: .cancel) {}
             case .unsubscribe:
-                return Alert(
-                    title: Text("Unsubscribe"),
-                    message: Text("Do you really want to unsubscribe from this topic and delete all of the notifications you received?"),
-                    primaryButton: .destructive(
-                        Text("Unsubscribe"),
-                        action: unsubscribe
-                    ),
-                    secondaryButton: .cancel())
+                Button("Unsubscribe", role: .destructive, action: unsubscribe)
+                Button("Cancel", role: .cancel) {}
             case .selected:
-                return Alert(
-                    title: Text("Delete"),
-                    message: Text("Do you really want to delete these selected notifications?"),
-                    primaryButton: .destructive(
-                        Text("Delete"),
-                        action: deleteSelected
-                    ),
-                    secondaryButton: .cancel())
+                Button("Delete", role: .destructive, action: deleteSelected)
+                Button("Cancel", role: .cancel) {}
+            }
+        } message: { alert in
+            switch alert {
+            case .clear:
+                Text("Do you really want to delete all of the notifications in this topic?")
+            case .unsubscribe:
+                Text("Do you really want to unsubscribe from this topic and delete all of the notifications you received?")
+            case .selected:
+                Text("Do you really want to delete these selected notifications?")
             }
         }
         .overlay {
