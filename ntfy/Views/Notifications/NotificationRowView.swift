@@ -46,13 +46,19 @@ struct NotificationRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack(alignment: .top, spacing: 8) {
-                    if !notification.isRead {
-                        Circle()
-                            .fill(iconManager.current.accentColor)
-                            .frame(width: 8, height: 8)
-                            .padding(.top, 4)
-                            .accessibilityLabel("Unread")
-                    }
+                    // The dot always occupies its slot and is hidden with `opacity` rather than
+                    // being added to / removed from the stack. `onDisappear` flips `isRead` while
+                    // the list is still moving, and inserting or removing the 8pt circle plus the
+                    // stack's 8pt spacing re-flowed the row's leading edge mid-gesture — with a
+                    // burst of rows doing it at once during a fast scroll or a dismissal, that is
+                    // what read as the list scrambling.
+                    Circle()
+                        .fill(iconManager.current.accentColor)
+                        .frame(width: 8, height: 8)
+                        .padding(.top, 4)
+                        .opacity(notification.isRead ? 0 : 1)
+                        .accessibilityLabel("Unread")
+                        .accessibilityHidden(notification.isRead)
                     HStack(alignment: .center, spacing: 2) {
                         Text(notification.shortDateTime())
                             .font(.subheadline)

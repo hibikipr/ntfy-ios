@@ -54,6 +54,9 @@ class Store: ObservableObject {
     /// tab bar badge) can observe this directly instead of standing up their own fetch of every
     /// notification just to derive a count.
     @Published private(set) var unreadCount: Int = 0
+    /// Guards `scheduleReadFlush()` against queueing more than one pending save. Only ever touched
+    /// from inside a `context.perform` block, so the context's own queue serializes access.
+    private var isReadFlushScheduled = false
 
     init(inMemory: Bool = false) {
         let storeUrl = (inMemory) ? URL(fileURLWithPath: "/dev/null") : FileManager.default
@@ -395,13 +398,36 @@ class Store: ObservableObject {
         // (mutate + save + badge-count fetch) on the same run loop turn as the scroll, causing jank.
         context.perform {
             notification.isRead = true
-            do {
-                try self.context.save()
-                Log.d(Store.tag, "Marked notification \(notification.id ?? "?") as read")
-                self.syncBadgeCount()
-            } catch {
-                Log.w(Store.tag, "Failed to save isRead for notification \(notification.id ?? "?")", error)
+            Log.d(Store.tag, "Marking notification \(notification.id ?? "?") as read")
+            self.scheduleReadFlush()
+        }
+    }
+
+    /// Coalesces `markRead` flips into one save per run-loop turn.
+    ///
+    /// `onDisappear` fires per row, so a fast scroll produces a burst of them and *dismissing* a
+    /// list fires one for every row still on screen, all within a single turn. Saving inside each
+    /// `markRead` meant N `context.save()` calls plus N `unreadNotificationCount()` fetches back to
+    /// back — and, worse, N separate FRC change notifications, so the list re-diffed and re-laid
+    /// out N times mid-gesture. Batching them keeps the semantics identical (every flip still
+    /// lands) while collapsing that into one save and one FRC notification.
+    private func scheduleReadFlush() {
+        guard !isReadFlushScheduled else { return }
+        isReadFlushScheduled = true
+        // Enqueued from inside a `context.perform` block, so it runs after every `markRead` block
+        // already queued this turn — i.e. after the whole burst has flipped its flags.
+        context.perform {
+            self.isReadFlushScheduled = false
+            if self.context.hasChanges {
+                do {
+                    try self.context.save()
+                } catch {
+                    Log.w(Store.tag, "Failed to save isRead flags", error)
+                }
             }
+            // Outside the `hasChanges` check: another save on this context may already have
+            // flushed these flips, and the badge still has to catch up with them.
+            self.syncBadgeCount()
         }
     }
 
