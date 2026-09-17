@@ -62,7 +62,14 @@ struct NotificationListView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)
+        // No `.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)` here. It opts the
+        // navigation bar into resizing itself in response to scroll position, and on this screen —
+        // where the bar also hosts a `.searchable` field — that closed a layout loop: starting an
+        // interactive pop forces a synchronous layout, the layout rewrites the list's safe area
+        // insets, changing insets fires the scroll observers, and the bar's scroll observer resizes
+        // the bar, dirtying layout again. The main thread spins inside that loop until the
+        // scene-update watchdog kills the app (0x8BADF00D), which is what the 2026-09-13 crash log
+        // caught mid-transition. Re-add only with a scroll-and-swipe-back soak test on device.
         .searchable(text: $searchText, prompt: "Search notifications")
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.editMode, self.$editMode)
