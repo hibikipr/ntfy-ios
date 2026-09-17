@@ -62,14 +62,27 @@ struct NotificationListView: View {
             }
         }
         .listStyle(.insetGrouped)
-        // No `.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)` here. It opts the
-        // navigation bar into resizing itself in response to scroll position, and on this screen —
-        // where the bar also hosts a `.searchable` field — that closed a layout loop: starting an
-        // interactive pop forces a synchronous layout, the layout rewrites the list's safe area
-        // insets, changing insets fires the scroll observers, and the bar's scroll observer resizes
-        // the bar, dirtying layout again. The main thread spins inside that loop until the
-        // scene-update watchdog kills the app (0x8BADF00D), which is what the 2026-09-13 crash log
-        // caught mid-transition. Re-add only with a scroll-and-swipe-back soak test on device.
+        // Do not add `.toolbarMinimizationBehavior(.onScrollDown, for: .navigationBar)` here. It
+        // hung the app hard enough for the scene-update watchdog to kill it (0x8BADF00D), every
+        // time you scrolled this list and then swiped back:
+        //
+        //   UIPercentDrivenInteractiveTransition startInteractiveTransition   (the swipe-back)
+        //   -> _UINavigationParallaxTransition ... -> UIView layoutBelowIfNeeded
+        //   -> UIView _updateSafeAreaInsets -> UIScrollView setSafeAreaInsets:
+        //   -> UIScrollView _notifyDidScroll
+        //   -> UINavigationController _observeScrollViewDidScroll:topLayoutType:
+        //   -> _updateTopViewFramesToMatchScrollOffsetInViewController:...
+        //   -> _calculateTopViewFramesForLayoutWithViewController:...navBarFrame:topPaletteFrame:
+        //   -> _effectiveTopSafeArea                                          (back to the top)
+        //
+        // Starting the pop forces a synchronous layout, the layout rewrites the list's safe area
+        // insets, changed insets notify the scroll observers, and this modifier is what makes the
+        // navigation bar recompute its frame from the scroll offset — which changes the top safe
+        // area again. The main thread spins there burning ~10s of CPU until the watchdog fires.
+        //
+        // `.searchable` below is NOT part of the loop, despite `topPaletteFrame` appearing in it:
+        // AllNotificationsView has the same `.searchable` and inline title with no minimization
+        // behavior, and does not hang. Removing this modifier alone fixed it on device.
         .searchable(text: $searchText, prompt: "Search notifications")
         .navigationBarTitleDisplayMode(.inline)
         .environment(\.editMode, self.$editMode)
