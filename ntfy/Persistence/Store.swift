@@ -392,11 +392,32 @@ class Store: ObservableObject {
     }
 
     func markRead(_ notification: Notification) {
-        guard !notification.isRead else { return }
-        // `perform`, not `performAndWait`: this is called from `onDisappear` while scrolling, and
-        // no caller waits on a return value. Running it synchronously blocked the main thread
-        // (mutate + save + badge-count fetch) on the same run loop turn as the scroll, causing jank.
+        // Read *only* `objectID` on the caller's thread. It is the one property of a managed object
+        // that never fires a fault, so it stays safe even when the row behind this object is
+        // already gone.
+        //
+        // That matters because every caller is `NotificationRowView`'s `.onDisappear`, which fires
+        // after the row has left the view hierarchy — including when it left *because it was
+        // deleted*: swipe-to-delete, "Clear all notifications", "Delete selected", or the cascade
+        // from an unsubscribe. By then the row can be deleted and saved, and touching any
+        // persistent property of a deleted-and-saved object raises NSObjectInaccessibleException
+        // ("could not fulfill a fault"). That is an Objective-C exception, which Swift cannot
+        // catch, so it terminates the app rather than surfacing as an error.
+        let objectID = notification.objectID
+        // `perform`, not `performAndWait`: no caller waits on a return value, and running the
+        // mutate + save + badge-count fetch synchronously blocked the main thread on the same run
+        // loop turn as the scroll, causing jank.
         context.perform {
+            // Re-resolve rather than trusting the captured object. `existingObject(with:)` throws a
+            // *Swift* error when the row no longer exists, which we can handle; `isDeleted` covers
+            // a delete that has not been saved yet.
+            guard
+                let notification = try? self.context.existingObject(with: objectID) as? Notification,
+                !notification.isDeleted,
+                !notification.isRead
+            else {
+                return
+            }
             notification.isRead = true
             Log.d(Store.tag, "Marking notification \(notification.id ?? "?") as read")
             self.scheduleReadFlush()

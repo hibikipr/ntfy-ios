@@ -19,6 +19,7 @@ struct NotificationListView: View {
     private let tag = "NotificationListView"
     
     @Environment(AppDelegate.self) private var delegate
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: Store
     @EnvironmentObject private var iconManager: AppIconManager
 
@@ -151,6 +152,12 @@ struct NotificationListView: View {
             cancelSubscriptionNotifications()
         }
         .onDisappear {
+            // This also runs while popping *because* the topic was unsubscribed, at which point the
+            // Subscription row can already be deleted and saved. `urlString()` reads `baseUrl` and
+            // `topic`, which would fire a fault on a dead row and raise the uncatchable
+            // NSObjectInaccessibleException. A deleted-and-saved object loses its context, and
+            // `isDeleted` covers the not-yet-saved case.
+            guard !subscription.isDeleted, subscription.managedObjectContext != nil else { return }
             if delegate.selectedBaseUrl == subscription.urlString() {
                 delegate.selectedBaseUrl = nil
             }
@@ -246,8 +253,14 @@ struct NotificationListView: View {
     
     private func unsubscribe() {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
-        subscriptionManager.unsubscribe(subscription)
         delegate.selectedBaseUrl = nil
+        // Pop *before* deleting. Nothing else dismisses this screen, so without it the user is left
+        // sitting on the detail view of a subscription that no longer exists: the next re-render
+        // reads `subscription.displayName()` (and the row list re-reads cascade-deleted
+        // notifications) off dead objects. `unsubscribe` defers the actual delete to the next main
+        // run loop turn, so the pop is committed first.
+        dismiss()
+        subscriptionManager.unsubscribe(subscription)
     }
 
     private func deleteAll() {
