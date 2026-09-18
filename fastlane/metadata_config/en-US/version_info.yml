@@ -1,0 +1,13 @@
+---
+description: 
+keywords: 
+promotional_text: 
+marketing_url:
+support_url:
+# whats_new intentionally omitted: Apple's API rejects it with a 409
+# STATE_ERROR ("Attribute 'whatsNew' cannot be edited at this time") on a
+# version that has never been released -- there's nothing for "what's new"
+# to compare against yet. Confirmed live against NozzleCast's first (rejected,
+# never-released) 1.0 submission; this app has likewise never shipped. Add
+# this field back once ntfy-ios has a live version and this becomes an
+# update rather than a first submission.
