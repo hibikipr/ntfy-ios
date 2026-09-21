@@ -14,8 +14,15 @@ class NotificationsObservable: NSObject, ObservableObject {
         // Filter by the desired subscription
         fetchRequest.predicate = NSPredicate(format: "subscription == %@", subscriptionID)
 
-        // Sort descriptors if you need them
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)] // Assuming you have a 'date' attribute on the NotificationEntity
+        // Secondary sort on `id` makes display order deterministic when two notifications have
+        // an equal `time` (reachable in practice: `time` is a Unix-second timestamp, so a burst of
+        // messages delivered within the same second ties) — otherwise NSFetchedResultsController's
+        // order for ties is undefined and rows can visibly reshuffle between fetches, same failure
+        // mode SubscriptionsObservable hit with `sortRank` ties.
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "time", ascending: false),
+            NSSortDescriptor(key: "id", ascending: true)
+        ]
 
         let controller = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: Store.shared.context, sectionNameKeyPath: nil, cacheName: nil)
         controller.delegate = self

@@ -9,7 +9,12 @@ class AllNotificationsObservable: NSObject, ObservableObject {
 
     private lazy var fetchedResultsController: NSFetchedResultsController<Notification> = {
         let fetchRequest: NSFetchRequest<Notification> = Notification.fetchRequest()
-        fetchRequest.sortDescriptors = [NSSortDescriptor(key: "time", ascending: false)]
+        // Secondary sort on `id` keeps ties on `time` (a Unix-second timestamp) deterministic —
+        // see the same fix in NotificationsObservable.
+        fetchRequest.sortDescriptors = [
+            NSSortDescriptor(key: "time", ascending: false),
+            NSSortDescriptor(key: "id", ascending: true)
+        ]
         fetchRequest.fetchBatchSize = 50
 
         let controller = NSFetchedResultsController(fetchRequest: fetchRequest, managedObjectContext: Store.shared.context, sectionNameKeyPath: nil, cacheName: nil)

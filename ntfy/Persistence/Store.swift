@@ -317,6 +317,14 @@ class Store: ObservableObject {
 
         var newMessages: [Message] = []
         context.performAndWait {
+            // `subscription` may have been captured before an `await` (e.g. a network round trip
+            // in SubscriptionManager.poll) and unsubscribed from in the meantime. Re-checking here,
+            // inside the same confinement queue as the delete, closes that race instead of merely
+            // narrowing it like the caller's upfront liveness check does.
+            guard !subscription.isDeleted, subscription.managedObjectContext != nil else {
+                Log.d(Store.tag, "Subscription was removed before notifications could be saved; discarding \(messages.count) message(s)")
+                return
+            }
             do {
                 newMessages = try saveNotifications(messages, withSubscription: subscription)
             } catch let error {
