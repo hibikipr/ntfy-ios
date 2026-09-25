@@ -7,6 +7,7 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
     case orange
     case green
     case red
+    case redDark
 
     var id: String { rawValue }
 
@@ -16,6 +17,7 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
         case .orange: return "Glass (Orange)"
         case .green: return "Glass (Green)"
         case .red: return "Glass (Red)"
+        case .redDark: return "Glass (Red Dark)"
         }
     }
 
@@ -27,6 +29,7 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
         case .orange: return "AppIcon-Orange"
         case .green: return "AppIcon-Green"
         case .red: return "AppIcon-Red"
+        case .redDark: return "AppIcon-RedDark"
         }
     }
 
@@ -36,6 +39,7 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
         case .orange: return "AppIconPreview-Orange"
         case .green: return "AppIconPreview-Green"
         case .red: return "AppIconPreview-Red"
+        case .redDark: return "AppIconPreview-RedDark"
         }
     }
 
@@ -47,6 +51,7 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
         case .orange: return Color("AccentColor-Orange")
         case .green: return Color("AccentColor-Green")
         case .red: return Color("AccentColor-Red")
+        case .redDark: return Color("AccentColor-Red")
         }
     }
 

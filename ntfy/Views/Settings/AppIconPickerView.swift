@@ -24,6 +24,7 @@ struct AppIconPickerView: View {
                     row(for: .orange)
                     row(for: .green)
                     row(for: .red)
+                    row(for: .redDark)
                 }
                 .navigationTitle("App Icon")
                 .navigationBarTitleDisplayMode(.inline)
