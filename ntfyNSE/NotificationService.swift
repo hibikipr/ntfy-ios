@@ -33,7 +33,7 @@ class NotificationService: UNNotificationServiceExtension {
             switch message.event {
             case "poll_request":
                 handlePollRequest(request, bestAttemptContent, message, contentHandler)
-            case "message":
+            case "message", "message_delete", "message_clear":
                 let baseUrl = userInfo["base_url"]  as? String ?? Config.appBaseUrl // messages only come for the main server
                 handleMessage(request, bestAttemptContent, baseUrl, message, contentHandler)
             default:
@@ -56,16 +56,33 @@ class NotificationService: UNNotificationServiceExtension {
     
     private func handleMessage(_ request: UNNotificationRequest, _ content: UNMutableNotificationContent, _ baseUrl: String, _ message: Message, _ contentHandler: @escaping (UNNotificationContent) -> Void) {
         // Save notification first so attachment downloads can update persistent state.
-        guard store?.save(notificationFromMessage: message, baseUrl: baseUrl, topic: message.topic) == true else {
-            Log.w(tag, "Subscription \(topicUrl(baseUrl: baseUrl, topic: message.topic)) unknown")
+        guard let saved = store?.save(notificationFromMessage: message, baseUrl: baseUrl, topic: message.topic) else {
+            Log.w(tag, "Cannot save message for \(topicUrl(baseUrl: baseUrl, topic: message.topic)), unknown subscription or failed")
             contentHandler(request.content)
             return
         }
-        content.badge = NSNumber(value: store?.unreadNotificationCount() ?? 0)
-        let user = store?.getBasicUser(baseUrl: baseUrl)
-        content.modify(message: message, baseUrl: baseUrl)
-        content.attachImageIfNeeded(message: message, user: user) {
-            contentHandler(content)
+        // Remove the notifications this one deletes, clears or replaces (see `Message.sequenceId`)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+            baseUrl: baseUrl,
+            topic: message.topic,
+            sequenceIds: saved.outdatedSequenceIds
+        ) {
+            guard saved.shown.contains(where: { $0.id == message.id }) else {
+                // A delete or clear event, a stale update, or a message that is stored already.
+                // Without the filtering entitlement the alert can't be dropped, but iOS doesn't
+                // show a notification without title and body.
+                Log.d(self.tag, "Suppressing alert for \(message.event) \(message.id)")
+                let empty = UNMutableNotificationContent()
+                empty.badge = NSNumber(value: self.store?.unreadNotificationCount() ?? 0)
+                contentHandler(empty)
+                return
+            }
+            content.badge = NSNumber(value: self.store?.unreadNotificationCount() ?? 0)
+            let user = self.store?.getBasicUser(baseUrl: baseUrl)
+            content.modify(message: message, baseUrl: baseUrl)
+            content.attachImageIfNeeded(message: message, user: user) {
+                contentHandler(content)
+            }
         }
     }
     

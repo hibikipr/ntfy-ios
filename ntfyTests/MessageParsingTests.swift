@@ -1,4 +1,5 @@
 import XCTest
+import UserNotifications
 @testable import ntfy
 
 final class MessageParsingTests: XCTestCase {
@@ -240,5 +241,214 @@ final class ReplayTombstonesTests: XCTestCase {
         XCTAssertFalse(tombstones.contains("id9"))
         XCTAssertTrue(tombstones.contains("id10"))
         XCTAssertTrue(tombstones.contains("id\(count - 1)"))
+    }
+}
+
+final class SequenceIdTests: XCTestCase {
+    private let baseUrl = "https://ntfy.example.com"
+    // Recent, since `ReplayTombstones` forgets messages older than a week
+    private let now = Int64(Date().timeIntervalSince1970)
+    private var store: Store!
+    private var subscription: Subscription!
+
+    override func setUp() {
+        super.setUp()
+        store = Store(inMemory: true)
+        subscription = store.saveSubscription(baseUrl: baseUrl, topic: "mytopic")
+    }
+
+    override func tearDown() {
+        subscription = nil
+        store = nil
+        super.tearDown()
+    }
+
+    // Random IDs, since `ReplayTombstones` lives in the shared defaults and outlives a test
+    private func message(_ event: String = "message", sequenceId: String? = nil, text: String? = nil, time: Int64? = nil) -> Message {
+        Message(
+            id: UUID().uuidString,
+            time: time ?? now,
+            event: event,
+            topic: "mytopic",
+            message: text ?? (event == "message" ? "text" : nil),
+            sequenceId: sequenceId
+        )
+    }
+
+    private func stored() -> [ntfy.Notification] {
+        var notifications: [ntfy.Notification] = []
+        store.context.performAndWait {
+            let request = ntfy.Notification.fetchRequest()
+            request.sortDescriptors = [NSSortDescriptor(key: "time", ascending: true)]
+            notifications = (try? store.context.fetch(request)) ?? []
+        }
+        return notifications
+    }
+
+    // MARK: - Message
+
+    func testDecodesSequenceId() throws {
+        let json = """
+        {"id":"abc123","time":1700000000,"event":"message_delete","topic":"mytopic","sequence_id":"seq1"}
+        """.data(using: .utf8)!
+
+        let message = try JSONDecoder().decode(Message.self, from: json)
+
+        XCTAssertEqual(message.sequenceId, "seq1")
+        XCTAssertEqual(message.effectiveSequenceId, "seq1")
+    }
+
+    func testEffectiveSequenceIdFallsBackToMessageId() {
+        XCTAssertEqual(Message(id: "abc", time: 0, event: "message", topic: "t").effectiveSequenceId, "abc")
+        XCTAssertEqual(Message(id: "abc", time: 0, event: "message", topic: "t", sequenceId: "").effectiveSequenceId, "abc")
+    }
+
+    func testSequenceIdRoundTripsThroughUserInfo() {
+        let original = Message(id: "abc", time: 1, event: "message", topic: "t", sequenceId: "seq1")
+        XCTAssertEqual(Message.from(userInfo: original.toUserInfo())?.sequenceId, "seq1")
+
+        // The server sends an empty sequence_id for messages published without one
+        let withoutSequence = Message(id: "abc", time: 1, event: "message", topic: "t")
+        XCTAssertNil(Message.from(userInfo: withoutSequence.toUserInfo())?.sequenceId)
+    }
+
+    func testMatchesDeliveredNotificationsBySequenceAndTopic() {
+        var userInfo = Message(id: "abc", time: 1, event: "message", topic: "mytopic", sequenceId: "seq1").toUserInfo()
+        userInfo["base_url"] = baseUrl + "/"
+
+        XCTAssertTrue(UNUserNotificationCenter.isDeliveredNotification(userInfo: userInfo, of: ["seq1"], baseUrl: baseUrl, topic: "mytopic"))
+        XCTAssertFalse(UNUserNotificationCenter.isDeliveredNotification(userInfo: userInfo, of: ["abc"], baseUrl: baseUrl, topic: "mytopic"))
+        XCTAssertFalse(UNUserNotificationCenter.isDeliveredNotification(userInfo: userInfo, of: ["seq1"], baseUrl: baseUrl, topic: "other"))
+        XCTAssertFalse(UNUserNotificationCenter.isDeliveredNotification(userInfo: userInfo, of: ["seq1"], baseUrl: "https://ntfy.sh", topic: "mytopic"))
+    }
+
+    // MARK: - Store
+
+    func testStoresSequenceId() {
+        let first = message(sequenceId: "seq1")
+        let second = message()
+        store.save(notificationsFromMessages: [first, second], withSubscription: subscription)
+
+        XCTAssertEqual(Set(stored().compactMap(\.sequenceId)), ["seq1", second.id])
+    }
+
+    func testUpdateReplacesNotificationOfSameSequence() {
+        store.save(notificationsFromMessages: [message(sequenceId: "seq1", text: "Downloading")], withSubscription: subscription)
+        let other = message(sequenceId: "other", text: "Other")
+        store.save(notificationsFromMessages: [other], withSubscription: subscription)
+
+        let update = message(sequenceId: "seq1", text: "Done", time: now + 1)
+        let saved = store.save(notificationsFromMessages: [update], withSubscription: subscription)
+
+        XCTAssertEqual(saved.shown.map(\.id), [update.id])
+        XCTAssertEqual(saved.outdatedSequenceIds, ["seq1"])
+        XCTAssertEqual(Set(stored().map(\.message)), ["Done", "Other"])
+    }
+
+    func testUpdateWithMessageIdAsSequenceIdReplacesOriginal() {
+        let original = message()
+        store.save(notificationsFromMessages: [original], withSubscription: subscription)
+
+        store.save(notificationsFromMessages: [message(sequenceId: original.id, text: "Updated", time: now + 1)], withSubscription: subscription)
+
+        XCTAssertEqual(stored().map(\.message), ["Updated"])
+    }
+
+    func testUpdateReplacesNotificationStoredWithoutSequenceId() {
+        // Notifications stored before the sequenceId attribute existed have none
+        let original = message()
+        store.save(notificationsFromMessages: [original], withSubscription: subscription)
+        store.context.performAndWait {
+            stored().first?.sequenceId = nil
+            try? store.context.save()
+        }
+
+        store.save(notificationsFromMessages: [message(sequenceId: original.id, text: "Updated", time: now + 1)], withSubscription: subscription)
+
+        XCTAssertEqual(stored().map(\.message), ["Updated"])
+    }
+
+    func testSkipsUpdateOlderThanStoredVersion() {
+        store.save(notificationsFromMessages: [message(sequenceId: "seq1", text: "Done", time: now + 1)], withSubscription: subscription)
+
+        let saved = store.save(notificationsFromMessages: [message(sequenceId: "seq1", text: "Downloading")], withSubscription: subscription)
+
+        XCTAssertTrue(saved.shown.isEmpty)
+        XCTAssertEqual(stored().map(\.message), ["Done"])
+    }
+
+    func testPollWithSeveralVersionsKeepsLatest() {
+        let saved = store.save(notificationsFromMessages: [
+            message(sequenceId: "seq1", text: "Downloading"),
+            message(sequenceId: "seq1", text: "Done", time: now + 1),
+        ], withSubscription: subscription)
+
+        XCTAssertEqual(saved.shown.map(\.message), ["Done"])
+        XCTAssertEqual(stored().map(\.message), ["Done"])
+    }
+
+    func testDeleteRemovesNotificationsOfSequence() {
+        let kept = message(sequenceId: "other")
+        store.save(notificationsFromMessages: [message(sequenceId: "seq1"), kept], withSubscription: subscription)
+
+        let saved = store.save(notificationsFromMessages: [message("message_delete", sequenceId: "seq1", time: now + 1)], withSubscription: subscription)
+
+        XCTAssertTrue(saved.shown.isEmpty)
+        XCTAssertEqual(saved.dismissedSequenceIds, ["seq1"])
+        XCTAssertEqual(stored().map(\.id), [kept.id])
+    }
+
+    func testDeleteInSamePollDropsMessage() {
+        let delete = message("message_delete", sequenceId: "seq1", time: now + 1)
+        let saved = store.save(notificationsFromMessages: [message(sequenceId: "seq1"), delete], withSubscription: subscription)
+
+        XCTAssertTrue(saved.shown.isEmpty)
+        XCTAssertTrue(stored().isEmpty)
+        XCTAssertEqual(subscription.lastNotificationId, delete.id)
+    }
+
+    func testClearMarksNotificationsOfSequenceRead() {
+        store.save(notificationsFromMessages: [message(sequenceId: "seq1"), message(sequenceId: "other")], withSubscription: subscription)
+
+        let saved = store.save(notificationsFromMessages: [message("message_clear", sequenceId: "seq1", time: now + 1)], withSubscription: subscription)
+
+        XCTAssertEqual(saved.dismissedSequenceIds, ["seq1"])
+        XCTAssertEqual(stored().count, 2)
+        XCTAssertEqual(Dictionary(uniqueKeysWithValues: stored().map { ($0.sequenceId!, $0.isRead) }), ["seq1": true, "other": false])
+    }
+
+    func testReplayedClearDoesNotMarkNewerVersionRead() {
+        // Since ntfy v2.31, a `since=<id>` poll returns the newest second again
+        let clear = message("message_clear", sequenceId: "seq1")
+        let update = message(sequenceId: "seq1", text: "Again")
+        store.save(notificationsFromMessages: [message(sequenceId: "seq1"), clear, update], withSubscription: subscription)
+
+        store.save(notificationsFromMessages: [clear, update], withSubscription: subscription)
+
+        XCTAssertEqual(stored().map(\.message), ["Again"])
+        XCTAssertEqual(stored().map(\.isRead), [false])
+    }
+
+    func testReplayedOldVersionDoesNotReplaceUpdate() {
+        let first = message(sequenceId: "seq1", text: "Downloading")
+        let update = message(sequenceId: "seq1", text: "Done")
+        store.save(notificationsFromMessages: [first], withSubscription: subscription)
+        store.save(notificationsFromMessages: [update], withSubscription: subscription)
+
+        store.save(notificationsFromMessages: [first, update], withSubscription: subscription)
+
+        XCTAssertEqual(stored().map(\.message), ["Done"])
+    }
+
+    func testIgnoresPollRequests() {
+        let saved = store.save(notificationsFromMessages: [message("poll_request")], withSubscription: subscription)
+
+        XCTAssertTrue(saved.shown.isEmpty)
+        XCTAssertTrue(stored().isEmpty)
+    }
+
+    func testSaveForUnknownTopicReturnsNil() {
+        XCTAssertNil(store.save(notificationFromMessage: message(), baseUrl: baseUrl, topic: "unknown"))
+        XCTAssertEqual(store.save(notificationFromMessage: message(), baseUrl: baseUrl, topic: "mytopic")?.shown.count, 1)
     }
 }

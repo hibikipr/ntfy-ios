@@ -98,6 +98,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable : Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         Log.d(tag, "Background notification received", userInfo)
         
+        // The server sends deletes and clears (see `Message.sequenceId`) as background notifications
+        if let message = Message.from(userInfo: userInfo), ["message_delete", "message_clear"].contains(message.event) {
+            let baseUrl = userInfo["base_url"] as? String ?? Config.appBaseUrl
+            guard let saved = Store.shared.save(notificationFromMessage: message, baseUrl: baseUrl, topic: message.topic) else {
+                completionHandler(.noData)
+                return
+            }
+            UNUserNotificationCenter.current().removeDeliveredNotifications(
+                baseUrl: baseUrl,
+                topic: message.topic,
+                sequenceIds: saved.outdatedSequenceIds
+            ) {
+                completionHandler(.newData)
+            }
+            return
+        }
+
         // Exit out early if this message is not expected
         let topic = userInfo["topic"] as? String ?? ""
         if topic != pollTopic {
@@ -170,6 +187,13 @@ extension AppDelegate: UNUserNotificationCenterDelegate {
         if let message = Message.from(userInfo: userInfo), message.event == "message" {
             let baseUrl = userInfo["base_url"] as? String ?? Config.appBaseUrl
             _ = Store.shared.save(notificationFromMessage: message, baseUrl: baseUrl, topic: message.topic)
+            // Replace the notification's older versions (see `Message.sequenceId`)
+            center.removeDeliveredNotifications(
+                baseUrl: baseUrl,
+                topic: message.topic,
+                sequenceIds: [message.effectiveSequenceId],
+                except: notification.request.identifier
+            ) {}
         }
         completionHandler([[.banner, .sound]])
     }

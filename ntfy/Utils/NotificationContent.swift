@@ -222,3 +222,47 @@ private func fallbackAttachmentSummary(attachment: MessageAttachment) -> String 
     }
     return "Attachment: " + parts.joined(separator: ", ")
 }
+
+extension UNUserNotificationCenter {
+    /// Removes the delivered notifications of the given sequences in a topic, e.g. because they
+    /// were deleted, cleared or replaced by a newer version (see `Message.sequenceId`). Matches on
+    /// the message in the userInfo, so this covers both pushes and local notifications.
+    func removeDeliveredNotifications(
+        baseUrl: String,
+        topic: String,
+        sequenceIds: Set<String>,
+        except exceptIdentifier: String? = nil,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard !sequenceIds.isEmpty else {
+            completionHandler()
+            return
+        }
+        getDeliveredNotifications { notifications in
+            let identifiers = notifications
+                .filter { notification in
+                    notification.request.identifier != exceptIdentifier
+                        && Self.isDeliveredNotification(
+                            userInfo: notification.request.content.userInfo,
+                            of: sequenceIds,
+                            baseUrl: baseUrl,
+                            topic: topic
+                        )
+                }
+                .map(\.request.identifier)
+            if !identifiers.isEmpty {
+                self.removeDeliveredNotifications(withIdentifiers: identifiers)
+            }
+            completionHandler()
+        }
+    }
+
+    static func isDeliveredNotification(userInfo: [AnyHashable: Any], of sequenceIds: Set<String>, baseUrl: String, topic: String) -> Bool {
+        guard let message = Message.from(userInfo: userInfo), message.topic == topic else {
+            return false
+        }
+        let notificationBaseUrl = userInfo["base_url"] as? String ?? Config.appBaseUrl
+        return normalizeBaseUrl(notificationBaseUrl) == normalizeBaseUrl(baseUrl)
+            && sequenceIds.contains(message.effectiveSequenceId)
+    }
+}

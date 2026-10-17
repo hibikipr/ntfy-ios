@@ -357,11 +357,24 @@ struct Message: Decodable {
     var pollId: String?
     var attachment: MessageAttachment?
     var contentType: String?
+    /// Links the versions of a notification: a `message` with the sequence ID of an earlier one
+    /// replaces it, and `message_delete`/`message_clear` delete it or mark it read. Unset when the
+    /// message was published without one, in which case the message ID is the sequence ID.
+    var sequenceId: String?
 
     enum CodingKeys: String, CodingKey {
         case id, time, event, topic, message, title, priority, tags, actions, click, attachment
         case pollId = "poll_id"
         case contentType = "content_type"
+        case sequenceId = "sequence_id"
+    }
+
+    /// The sequence this message belongs to, see `sequenceId`.
+    var effectiveSequenceId: String {
+        if let sequenceId, !sequenceId.isEmpty {
+            return sequenceId
+        }
+        return id
     }
 
     /// Whether the message body should be rendered as Markdown, as indicated by the server's
@@ -389,7 +402,8 @@ struct Message: Decodable {
         click: String? = nil,
         pollId: String? = nil,
         attachment: MessageAttachment? = nil,
-        contentType: String? = nil
+        contentType: String? = nil,
+        sequenceId: String? = nil
     ) {
         self.id = id
         self.time = time
@@ -404,6 +418,7 @@ struct Message: Decodable {
         self.pollId = pollId
         self.attachment = attachment
         self.contentType = contentType
+        self.sequenceId = sequenceId
     }
 
     init(from decoder: Decoder) throws {
@@ -421,6 +436,7 @@ struct Message: Decodable {
         pollId = try container.decodeIfPresent(String.self, forKey: .pollId)
         attachment = try container.decodeIfPresent(MessageAttachment.self, forKey: .attachment)
         contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
+        sequenceId = try container.decodeIfPresent(String.self, forKey: .sequenceId)
     }
     
     func toUserInfo() -> [AnyHashable: Any] {
@@ -439,7 +455,8 @@ struct Message: Decodable {
             "actions": Actions.shared.encode(actions),
             "click": click ?? "",
             "poll_id": pollId ?? "",
-            "content_type": contentType ?? ""
+            "content_type": contentType ?? "",
+            "sequence_id": sequenceId ?? ""
         ]
         if let attachment {
             userInfo["attachment_name"] = attachment.name
@@ -468,6 +485,7 @@ struct Message: Decodable {
         let click = userInfo["click"] as? String
         let pollId = userInfo["poll_id"] as? String
         let contentType = userInfo["content_type"] as? String
+        let sequenceId = (userInfo["sequence_id"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         let attachmentUrl = userInfo["attachment_url"] as? String
         let attachment: MessageAttachment?
         if let attachmentUrl = attachmentUrl, !attachmentUrl.isEmpty {
@@ -494,7 +512,8 @@ struct Message: Decodable {
             click: click,
             pollId: pollId,
             attachment: attachment,
-            contentType: contentType
+            contentType: contentType,
+            sequenceId: sequenceId
         )
     }
 }

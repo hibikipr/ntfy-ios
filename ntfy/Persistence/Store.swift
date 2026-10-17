@@ -294,30 +294,31 @@ class Store: ObservableObject {
     // MARK: Notifications
     
     func save(notificationFromMessage message: Message, withSubscription subscription: Subscription) {
-        _ = save(notificationsFromMessages: [message], withSubscription: subscription)
+        save(notificationsFromMessages: [message], withSubscription: subscription)
     }
 
-    func save(notificationFromMessage message: Message, baseUrl: String, topic: String) -> Bool {
-        var didSave = false
+    /// Returns nil if there is no subscription for the topic, or saving failed.
+    func save(notificationFromMessage message: Message, baseUrl: String, topic: String) -> SavedNotifications? {
+        var saved: SavedNotifications?
         context.performAndWait {
             do {
                 guard let subscription = try fetchSubscription(baseUrl: baseUrl, topic: topic) else {
                     return
                 }
-                _ = try saveNotifications([message], withSubscription: subscription)
-                didSave = true
+                saved = try saveNotifications([message], withSubscription: subscription)
             } catch let error {
                 Log.w(Store.tag, "Cannot store notifications (fromMessages)", error)
                 rollbackAndRefresh()
             }
         }
-        return didSave
+        return saved
     }
 
-    func save(notificationsFromMessages messages: [Message], withSubscription subscription: Subscription) -> [Message] {
-        guard !messages.isEmpty else { return [] }
+    @discardableResult
+    func save(notificationsFromMessages messages: [Message], withSubscription subscription: Subscription) -> SavedNotifications {
+        guard !messages.isEmpty else { return SavedNotifications() }
 
-        var newMessages: [Message] = []
+        var saved = SavedNotifications()
         context.performAndWait {
             // `subscription` may have been captured before an `await` (e.g. a network round trip
             // in SubscriptionManager.poll) and unsubscribed from in the meantime. Re-checking here,
@@ -328,13 +329,13 @@ class Store: ObservableObject {
                 return
             }
             do {
-                newMessages = try saveNotifications(messages, withSubscription: subscription)
+                saved = try saveNotifications(messages, withSubscription: subscription)
             } catch let error {
                 Log.w(Store.tag, "Cannot store notifications (fromMessages)", error)
                 rollbackAndRefresh()
             }
         }
-        return newMessages
+        return saved
     }
 
     func delete(notification: Notification) {
@@ -686,68 +687,120 @@ class Store: ObservableObject {
         return try context.fetch(request).first
     }
 
-    private func saveNotifications(_ messages: [Message], withSubscription subscription: Subscription) throws -> [Message] {
+    /// Applies `messages` in order. A `message` replaces the stored versions of its sequence (unless
+    /// a newer one is stored already), `message_delete` deletes them and `message_clear` marks them
+    /// read. Other events, e.g. `poll_request`, are ignored.
+    private func saveNotifications(_ messages: [Message], withSubscription subscription: Subscription) throws -> SavedNotifications {
         let ids = messages.map(\.id)
         let existingRequest = Notification.fetchRequest()
         existingRequest.predicate = NSPredicate(format: "id IN %@", ids)
         let existingNotifications = try context.fetch(existingRequest)
         let existingIDs = Set(existingNotifications.compactMap(\.id))
-        // Polls also return `message_delete`/`message_clear` events, which aren't notifications
-        // to show. Tombstoned IDs were deleted here but can be replayed by `since=<id>` (see
-        // `ReplayTombstones`).
+        // Tombstoned IDs were deleted here (or are events applied already) but can be replayed by
+        // `since=<id>` (see `ReplayTombstones`).
         let newMessages = messages.filter { message in
-            message.event == "message"
-                && !existingIDs.contains(message.id)
-                && !Store.replayTombstones.contains(message.id)
+            !existingIDs.contains(message.id) && !Store.replayTombstones.contains(message.id)
         }
 
-        guard !newMessages.isEmpty else {
-            if let lastMessage = messages.last {
-                subscription.lastNotificationId = lastMessage.id
-                try context.save()
-            }
-            return newMessages
-        }
-
+        var saved = SavedNotifications()
+        var appliedEvents: [String: Int64] = [:]
         for message in newMessages {
-            let notification = Notification(context: context)
-            notification.id = message.id
-            notification.time = message.time
-            notification.message = message.message ?? ""
-            notification.title = message.title ?? ""
-            notification.priority = (message.priority != nil && message.priority != 0) ? message.priority! : 3
-            notification.tags = message.tags?.joined(separator: ",") ?? ""
-            notification.actions = Actions.shared.encode(message.actions)
-            notification.click = message.click ?? ""
-            notification.contentType = message.contentType
-            notification.attachmentName = message.attachment?.name
-            notification.attachmentType = message.attachment?.type
-            notification.attachmentSize = message.attachment?.size ?? 0
-            notification.attachmentExpires = message.attachment?.expires ?? 0
-            notification.attachmentUrl = message.attachment?.url
-            if
-                let attachment = message.attachment,
-                let remoteUrl = URL(string: attachment.url),
-                let localFileUrl = AttachmentFileStore.existingLocalFileUrl(
-                    notificationID: message.id,
-                    remoteUrl: remoteUrl,
-                    attachment: attachment,
-                    mimeType: attachment.type
-                )
-            {
-                notification.attachmentLocalPath = localFileUrl.path
-                notification.attachmentProgress = AttachmentProgressState.done.persistedValue
-            } else {
-                notification.attachmentProgress = message.attachment == nil ? 0 : AttachmentProgressState.none.persistedValue
+            let sequenceId = message.effectiveSequenceId
+            switch message.event {
+            case "message":
+                let versions = try fetchNotifications(sequenceId: sequenceId, subscription: subscription)
+                if versions.contains(where: { $0.time > message.time }) {
+                    Log.d(Store.tag, "Skipping notification \(message.id), a newer version of sequence \(sequenceId) is stored")
+                    continue
+                }
+                deleteVersions(versions)
+                insertNotification(from: message, subscription: subscription)
+                saved.shown.removeAll { $0.effectiveSequenceId == sequenceId }
+                saved.shown.append(message)
+            case "message_delete":
+                let versions = try fetchNotifications(sequenceId: sequenceId, subscription: subscription)
+                Log.d(Store.tag, "Deleting \(versions.count) notification(s) of sequence \(sequenceId)")
+                deleteVersions(versions)
+                saved.dismiss(sequenceId: sequenceId)
+                appliedEvents[message.id] = message.time
+            case "message_clear":
+                let versions = try fetchNotifications(sequenceId: sequenceId, subscription: subscription)
+                Log.d(Store.tag, "Marking \(versions.count) notification(s) of sequence \(sequenceId) as read")
+                versions.forEach { $0.isRead = true }
+                saved.dismiss(sequenceId: sequenceId)
+                appliedEvents[message.id] = message.time
+            default:
+                continue
             }
-            notification.subscription = subscription
-            subscription.addToNotifications(notification)
-            Log.d(Store.tag, "Storing notification with ID \(notification.id ?? "<unknown>")")
         }
-        subscription.lastNotificationId = messages.last?.id
+        // A replayed delete or clear must not hit a newer version stored since it was applied
+        Store.replayTombstones.add(appliedEvents)
+
+        if let lastMessage = messages.last {
+            subscription.lastNotificationId = lastMessage.id
+        }
         try context.save()
-        syncBadgeCount()
-        return newMessages
+        if !newMessages.isEmpty {
+            syncBadgeCount()
+        }
+        return saved
+    }
+
+    /// The stored versions of a sequence. Notifications stored before sequence IDs existed have none,
+    /// and their message ID is their sequence ID.
+    private func fetchNotifications(sequenceId: String, subscription: Subscription) throws -> [Notification] {
+        let request = Notification.fetchRequest()
+        request.predicate = NSPredicate(
+            format: "subscription == %@ AND (sequenceId == %@ OR (sequenceId == nil AND id == %@))",
+            subscription, sequenceId, sequenceId
+        )
+        return try context.fetch(request).filter { !$0.isDeleted }
+    }
+
+    private func deleteVersions(_ versions: [Notification]) {
+        guard !versions.isEmpty else { return }
+        rememberReplayableDeletions(versions)
+        versions.forEach { notification in
+            deleteAttachmentLocalFile(for: notification)
+            context.delete(notification)
+        }
+    }
+
+    private func insertNotification(from message: Message, subscription: Subscription) {
+        let notification = Notification(context: context)
+        notification.id = message.id
+        notification.sequenceId = message.effectiveSequenceId
+        notification.time = message.time
+        notification.message = message.message ?? ""
+        notification.title = message.title ?? ""
+        notification.priority = (message.priority != nil && message.priority != 0) ? message.priority! : 3
+        notification.tags = message.tags?.joined(separator: ",") ?? ""
+        notification.actions = Actions.shared.encode(message.actions)
+        notification.click = message.click ?? ""
+        notification.contentType = message.contentType
+        notification.attachmentName = message.attachment?.name
+        notification.attachmentType = message.attachment?.type
+        notification.attachmentSize = message.attachment?.size ?? 0
+        notification.attachmentExpires = message.attachment?.expires ?? 0
+        notification.attachmentUrl = message.attachment?.url
+        if
+            let attachment = message.attachment,
+            let remoteUrl = URL(string: attachment.url),
+            let localFileUrl = AttachmentFileStore.existingLocalFileUrl(
+                notificationID: message.id,
+                remoteUrl: remoteUrl,
+                attachment: attachment,
+                mimeType: attachment.type
+            )
+        {
+            notification.attachmentLocalPath = localFileUrl.path
+            notification.attachmentProgress = AttachmentProgressState.done.persistedValue
+        } else {
+            notification.attachmentProgress = message.attachment == nil ? 0 : AttachmentProgressState.none.persistedValue
+        }
+        notification.subscription = subscription
+        subscription.addToNotifications(notification)
+        Log.d(Store.tag, "Storing notification with ID \(notification.id ?? "<unknown>")")
     }
 
     /// Remembers deleted notifications that a `since=<id>` poll can return again: those from the
@@ -773,6 +826,27 @@ class Store: ObservableObject {
         if let localPath = notification.attachmentLocalPath, !localPath.isEmpty {
             try? FileManager.default.removeItem(at: URL(fileURLWithPath: localPath))
             notification.attachmentLocalPath = nil
+        }
+    }
+}
+
+/// What saving messages changed, so that the system notifications can follow.
+struct SavedNotifications {
+    /// The new or updated notifications to show, at most one per sequence, oldest first.
+    var shown: [Message] = []
+    /// Sequences that were deleted or cleared, whose system notifications should go away.
+    var dismissedSequenceIds: [String] = []
+
+    /// Sequences whose delivered system notifications are outdated: dismissed ones, and the ones
+    /// with a new version to show.
+    var outdatedSequenceIds: Set<String> {
+        Set(dismissedSequenceIds).union(shown.map(\.effectiveSequenceId))
+    }
+
+    fileprivate mutating func dismiss(sequenceId: String) {
+        shown.removeAll { $0.effectiveSequenceId == sequenceId }
+        if !dismissedSequenceIds.contains(sequenceId) {
+            dismissedSequenceIds.append(sequenceId)
         }
     }
 }

@@ -15,6 +15,7 @@
         <attribute name="isRead" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES" indexed="YES"/>
         <attribute name="message" attributeType="String"/>
         <attribute name="priority" optional="YES" attributeType="Integer 16" minValueString="1" maxValueString="5" defaultValueString="3" usesScalarValueType="YES"/>
+        <attribute name="sequenceId" optional="YES" attributeType="String" indexed="YES"/>
         <attribute name="tags" optional="YES" attributeType="String"/>
         <attribute name="time" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES" indexed="YES"/>
         <attribute name="title" optional="YES" attributeType="String"/>

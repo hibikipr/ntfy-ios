@@ -21,6 +21,18 @@ enum LocalNotificationPoster {
         }
     }
 
+    /// Brings the delivered notifications of a topic in line with what a poll saved: removes the ones
+    /// that were deleted, cleared or replaced, then shows the new and updated ones.
+    static func update(baseUrl: String, topic: String, saved: SavedNotifications, completionHandler: @escaping () -> Void) {
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+            baseUrl: baseUrl,
+            topic: topic,
+            sequenceIds: saved.outdatedSequenceIds
+        ) {
+            showSequentially(baseUrl: baseUrl, messages: saved.shown, completionHandler: completionHandler)
+        }
+    }
+
     static func showSequentially(baseUrl: String, messages: [Message], completionHandler: @escaping () -> Void) {
         guard let firstMessage = messages.first else {
             completionHandler()

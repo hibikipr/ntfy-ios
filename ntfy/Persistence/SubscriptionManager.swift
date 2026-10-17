@@ -90,15 +90,20 @@ struct SubscriptionManager {
         guard !messages.isEmpty else {
             return []
         }
-        let newMessages = store.save(notificationsFromMessages: messages, withSubscription: subscription)
-        guard notifyOnNewMessages, !newMessages.isEmpty, let baseUrl = subscription.baseUrl else {
-            return newMessages
+        let saved = store.save(notificationsFromMessages: messages, withSubscription: subscription)
+        guard
+            notifyOnNewMessages,
+            !saved.outdatedSequenceIds.isEmpty,
+            let baseUrl = subscription.baseUrl,
+            let topic = subscription.topic
+        else {
+            return saved.shown
         }
         await withCheckedContinuation { continuation in
-            LocalNotificationPoster.showSequentially(baseUrl: baseUrl, messages: newMessages) {
+            LocalNotificationPoster.update(baseUrl: baseUrl, topic: topic, saved: saved) {
                 continuation.resume()
             }
         }
-        return newMessages
+        return saved.shown
     }
 }
