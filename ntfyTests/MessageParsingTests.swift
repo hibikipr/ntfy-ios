@@ -184,11 +184,65 @@ final class MessageParsingTests: XCTestCase {
         XCTAssertFalse(notExpired.isExpired(referenceDate: Date(timeIntervalSince1970: 2000)))
     }
 
-    // MARK: - BasicUser
+    // MARK: - UserCredentials
 
-    func testBasicUserToHeaderEncodesBase64() {
-        let user = BasicUser(username: "phil", password: "phil123")
+    func testBasicCredentialsToHeaderEncodesBase64() {
+        let user = UserCredentials.basic(username: "phil", password: "phil123")
         XCTAssertEqual(user.toHeader(), "Basic cGhpbDpwaGlsMTIz")
+    }
+
+    func testBasicCredentialsToHeaderEncodesUnicodeAsUtf8() {
+        let user = UserCredentials.basic(username: "jürgen", password: "pässwörd:1")
+        XCTAssertEqual(user.toHeader(), "Basic " + Data("jürgen:pässwörd:1".utf8).base64EncodedString())
+    }
+
+    func testTokenCredentialsToHeaderUsesBearer() {
+        let user = UserCredentials.token("tk_AgQdq7mVBoFD37zQVN29RhuMzNIz2")
+        XCTAssertEqual(user.toHeader(), "Bearer tk_AgQdq7mVBoFD37zQVN29RhuMzNIz2")
+    }
+
+    func testUserWithTokenPrefersTokenOverPassword() {
+        let store = Store(inMemory: true)
+        let user = User(context: store.context)
+        user.baseUrl = "https://ntfy.sh"
+        user.username = "phil"
+        user.password = "phil123"
+        user.token = "tk_abc"
+        XCTAssertEqual(user.toCredentials(), .token("tk_abc"))
+        XCTAssertEqual(user.toCredentials().toHeader(), "Bearer tk_abc")
+    }
+
+    func testUserWithoutTokenUsesBasicAuth() {
+        let store = Store(inMemory: true)
+        let user = User(context: store.context)
+        user.baseUrl = "https://ntfy.sh"
+        user.username = "phil"
+        user.password = "phil123"
+        XCTAssertEqual(user.toCredentials(), .basic(username: "phil", password: "phil123"))
+
+        user.token = ""
+        XCTAssertEqual(user.toCredentials(), .basic(username: "phil", password: "phil123"))
+    }
+
+    func testSaveUserSwitchesBetweenTokenAndPassword() {
+        let store = Store(inMemory: true)
+        let baseUrl = "https://ntfy.example.com"
+
+        store.saveUser(baseUrl: baseUrl, credentials: .token("tk_abc"))
+        waitForStore(store)
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl)?.toHeader(), "Bearer tk_abc")
+
+        store.saveUser(baseUrl: baseUrl, credentials: .basic(username: "phil", password: "phil123"))
+        waitForStore(store)
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+        XCTAssertNil(store.getUser(baseUrl: baseUrl)?.token)
+    }
+
+    private func waitForStore(_ store: Store) {
+        // saveUser runs in context.perform; a later perform on the same queue runs after it.
+        let saved = expectation(description: "store saved")
+        store.context.perform { saved.fulfill() }
+        wait(for: [saved], timeout: 5)
     }
 }
 

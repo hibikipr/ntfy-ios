@@ -488,12 +488,26 @@ class Store: ObservableObject {
     // MARK: Users
     
     func saveUser(baseUrl: String, username: String, password: String) {
+        saveUser(baseUrl: baseUrl, credentials: .basic(username: username, password: password))
+    }
+
+    /// Token users are stored with an empty username and password, since both attributes are
+    /// required in the model; `User.toCredentials()` prefers the token whenever it is set.
+    func saveUser(baseUrl: String, credentials: UserCredentials) {
         context.perform {
             do {
                 let user = self.getUser(baseUrl: baseUrl) ?? User(context: self.context)
                 user.baseUrl = normalizeBaseUrl(baseUrl)
-                user.username = username
-                user.password = password
+                switch credentials {
+                case .basic(let username, let password):
+                    user.username = username
+                    user.password = password
+                    user.token = nil
+                case .token(let token):
+                    user.username = ""
+                    user.password = ""
+                    user.token = token
+                }
                 try self.context.save()
             } catch let error {
                 Log.w(Store.tag, "Cannot store user", error)
@@ -506,12 +520,12 @@ class Store: ObservableObject {
         try? fetchUser(baseUrl: baseUrl)
     }
 
-    func getBasicUser(baseUrl: String) -> BasicUser? {
-        var basicUser: BasicUser?
+    func getCredentials(baseUrl: String) -> UserCredentials? {
+        var credentials: UserCredentials?
         context.performAndWait {
-            basicUser = try? fetchUser(baseUrl: baseUrl)?.toBasicUser()
+            credentials = try? fetchUser(baseUrl: baseUrl)?.toCredentials()
         }
-        return basicUser
+        return credentials
     }
 
     func findSubscriptionMatch(forPollRequestTopic topic: String, preferredBaseUrl: String? = nil) -> (baseUrl: String, topic: String)? {

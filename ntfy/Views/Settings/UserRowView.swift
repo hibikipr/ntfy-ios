@@ -17,10 +17,10 @@ struct UserRowView: View {
         // even though in the subscription list it does.
         
         HStack {
-            Image(systemName: "person.fill")
+            Image(systemName: user.usesAccessToken ? "key.fill" : "person.fill")
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(user.username ?? "?")
+                    Text(user.usesAccessToken ? "Access token" : (user.username ?? "?"))
                     Text(user.baseUrl ?? "?")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

@@ -77,7 +77,7 @@ struct SubscriptionManager {
             return []
         }
 
-        let user = store.getUser(baseUrl: subscription.baseUrl!)?.toBasicUser()
+        let user = store.getUser(baseUrl: subscription.baseUrl!)?.toCredentials()
         Log.d(tag, "Polling from \(subscription.urlString()) with user \(user != nil ? "<redacted>" : "anonymous")")
         let messages: [Message]
         do {

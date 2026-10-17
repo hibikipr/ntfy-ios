@@ -17,7 +17,7 @@ struct PublishMessageIntent: AppIntent {
     @MainActor
     func perform() async throws -> some IntentResult {
         let subscription = Store.shared.getSubscription(baseUrl: topic.baseUrl, topic: topic.topic)
-        let user = Store.shared.getBasicUser(baseUrl: topic.baseUrl)
+        let user = Store.shared.getCredentials(baseUrl: topic.baseUrl)
         guard let subscription else {
             throw PublishMessageIntentError.topicNoLongerSubscribed
         }

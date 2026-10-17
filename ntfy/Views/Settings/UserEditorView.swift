@@ -11,17 +11,19 @@ struct UserEditorView: View {
     @EnvironmentObject private var store: Store
     
     let selectedUser: User?
-    let onSave: (String, String, String) -> Void
+    let onSave: (String, UserCredentials) -> Void
     let onDelete: (User) -> Void
     let onCancel: () -> Void
     
     @State private var baseUrl: String
     @State private var username: String
     @State private var password: String
+    @State private var token: String
+    @State private var authMethod: AuthMethod
     
     init(
         selectedUser: User?,
-        onSave: @escaping (String, String, String) -> Void,
+        onSave: @escaping (String, UserCredentials) -> Void,
         onDelete: @escaping (User) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -32,25 +34,40 @@ struct UserEditorView: View {
         _baseUrl = State(initialValue: selectedUser?.baseUrl ?? "")
         _username = State(initialValue: selectedUser?.username ?? "")
         _password = State(initialValue: "")
+        _token = State(initialValue: "")
+        _authMethod = State(initialValue: selectedUser?.usesAccessToken == true ? .token : .password)
     }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section(
-                    footer: isNewUser
-                    ? Text("You can add a user here. All topics for the given server will use this user.")
-                    : Text("Edit the username or password for \(shortUrl(url: baseUrl)) here. This user is used for all topics of this server. Leave the password blank to leave it unchanged.")
-                ) {
+                Section {
+                    Picker("Sign in with", selection: $authMethod) {
+                        ForEach(AuthMethod.allCases) { method in
+                            Text(method.title).tag(method)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                }
+                Section(footer: footer) {
                     if isNewUser {
                         TextField("Service URL, e.g. https://ntfy.home.io", text: $baseUrl)
                             .disableAutocapitalization()
                             .disableAutocorrection(true)
                     }
-                    TextField("Username", text: $username)
-                        .disableAutocapitalization()
-                        .disableAutocorrection(true)
-                    SecureField("Password", text: $password)
+                    switch authMethod {
+                    case .password:
+                        TextField("Username", text: $username)
+                            .disableAutocapitalization()
+                            .disableAutocorrection(true)
+                        SecureField("Password", text: $password)
+                    case .token:
+                        SecureField("Access token (tk_…)", text: $token)
+                            .disableAutocapitalization()
+                            .disableAutocorrection(true)
+                    }
                 }
             }
             .navigationTitle(isNewUser ? "Add user" : "Edit user")
@@ -90,15 +107,48 @@ struct UserEditorView: View {
     private var isNewUser: Bool {
         selectedUser == nil
     }
+
+    /// Whether a blank secret field may keep the stored secret: only when editing a user that
+    /// already signs in with the selected method.
+    private var canKeepStoredSecret: Bool {
+        guard let selectedUser else { return false }
+        return selectedUser.usesAccessToken == (authMethod == .token)
+    }
+
+    private var trimmedToken: String {
+        token.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var footer: Text {
+        switch authMethod {
+        case .password:
+            return isNewUser
+            ? Text("You can add a user here. All topics for the given server will use this user.")
+            : Text("Edit the username or password for \(shortUrl(url: baseUrl)) here. This user is used for all topics of this server.\(canKeepStoredSecret ? " Leave the password blank to leave it unchanged." : "")")
+        case .token:
+            return Text("Create an access token in the ntfy web app under Account, or with `ntfy token add`. It is used for all topics of \(isNewUser ? "the given server" : shortUrl(url: baseUrl)).\(canKeepStoredSecret ? " Leave the token blank to leave it unchanged." : "")")
+        }
+    }
     
     private func saveAction() {
-        let finalPassword: String
-        if let user = selectedUser, password.isEmpty {
-            finalPassword = user.password ?? "?"
-        } else {
-            finalPassword = password
+        switch authMethod {
+        case .password:
+            let finalPassword: String
+            if let user = selectedUser, canKeepStoredSecret, password.isEmpty {
+                finalPassword = user.password ?? "?"
+            } else {
+                finalPassword = password
+            }
+            onSave(baseUrl, .basic(username: username, password: finalPassword))
+        case .token:
+            let finalToken: String
+            if let user = selectedUser, canKeepStoredSecret, trimmedToken.isEmpty {
+                finalToken = user.token ?? ""
+            } else {
+                finalToken = trimmedToken
+            }
+            onSave(baseUrl, .token(finalToken))
         }
-        onSave(baseUrl, username, finalPassword)
     }
     
     private func deleteAction() {
@@ -110,14 +160,29 @@ struct UserEditorView: View {
         if isNewUser {
             if baseUrl.range(of: "^https?://.+", options: .regularExpression, range: nil, locale: nil) == nil {
                 return false
-            } else if username.isEmpty || password.isEmpty {
-                return false
             } else if store.getUser(baseUrl: baseUrl) != nil {
                 return false
             }
-        } else if username.isEmpty {
-            return false
         }
-        return true
+        switch authMethod {
+        case .password:
+            return !username.isEmpty && (canKeepStoredSecret || !password.isEmpty)
+        case .token:
+            return canKeepStoredSecret || !trimmedToken.isEmpty
+        }
+    }
+}
+
+private enum AuthMethod: String, CaseIterable, Identifiable {
+    case password
+    case token
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .password: return "Password"
+        case .token: return "Access token"
+        }
     }
 }

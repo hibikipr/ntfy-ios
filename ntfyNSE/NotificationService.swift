@@ -78,7 +78,7 @@ class NotificationService: UNNotificationServiceExtension {
                 return
             }
             content.badge = NSNumber(value: self.store?.unreadNotificationCount() ?? 0)
-            let user = self.store?.getBasicUser(baseUrl: baseUrl)
+            let user = self.store?.getCredentials(baseUrl: baseUrl)
             content.modify(message: message, baseUrl: baseUrl)
             content.attachImageIfNeeded(message: message, user: user) {
                 contentHandler(content)
@@ -100,7 +100,7 @@ class NotificationService: UNNotificationServiceExtension {
         }
         
         // Poll original server
-        let user = store?.getBasicUser(baseUrl: subscription.baseUrl)
+        let user = store?.getCredentials(baseUrl: subscription.baseUrl)
         // The extension only needs contentHandler to be called from the async callback
         Task {
             let message: Message

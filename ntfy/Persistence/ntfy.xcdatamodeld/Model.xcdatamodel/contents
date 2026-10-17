@@ -48,6 +48,7 @@
     <entity name="User" representedClassName="User" syncable="YES" codeGenerationType="class">
         <attribute name="baseUrl" attributeType="String"/>
         <attribute name="password" attributeType="String"/>
+        <attribute name="token" optional="YES" attributeType="String"/>
         <attribute name="username" attributeType="String"/>
         <uniquenessConstraints>
             <uniquenessConstraint>

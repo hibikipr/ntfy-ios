@@ -61,8 +61,8 @@ struct SettingsView: View {
         .sheet(item: $userDialog) { dialog in
             UserEditorView(
                 selectedUser: dialog.user,
-                onSave: { baseUrl, username, password in
-                    store.saveUser(baseUrl: baseUrl, username: username, password: password)
+                onSave: { baseUrl, credentials in
+                    store.saveUser(baseUrl: baseUrl, credentials: credentials)
                     userDialog = nil
                 },
                 onDelete: { user in

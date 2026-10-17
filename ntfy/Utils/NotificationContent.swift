@@ -81,7 +81,7 @@ extension UNMutableNotificationContent {
         self.userInfo["base_url"] = baseUrl
     }
 
-    func attachImageIfNeeded(message: Message, user: BasicUser?, completionHandler: @escaping () -> Void) {
+    func attachImageIfNeeded(message: Message, user: UserCredentials?, completionHandler: @escaping () -> Void) {
         guard let attachment = message.attachment else {
             completeAttachmentHandling(message: message, didAttachImage: false, completionHandler: completionHandler)
             return

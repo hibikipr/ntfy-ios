@@ -18,7 +18,7 @@ class ApiService {
         return URLSession(configuration: configuration)
     }()
 
-    func poll(subscription: Subscription, user: BasicUser?) async throws -> [Message] {
+    func poll(subscription: Subscription, user: UserCredentials?) async throws -> [Message] {
         guard let url = URL(string: subscription.urlString()) else {
             throw URLError(.badURL)
         }
@@ -29,7 +29,7 @@ class ApiService {
         return try await fetchJsonData(urlString: urlString, user: user)
     }
 
-    func poll(baseUrl: String, topic: String, messageId: String, user: BasicUser?) async throws -> Message {
+    func poll(baseUrl: String, topic: String, messageId: String, user: UserCredentials?) async throws -> Message {
         guard let url = URL(string: "\(topicUrl(baseUrl: baseUrl, topic: topic))/json?poll=1&id=\(messageId)") else {
             throw URLError(.badURL)
         }
@@ -45,7 +45,7 @@ class ApiService {
 
     func publish(
         subscription: Subscription,
-        user: BasicUser?,
+        user: UserCredentials?,
         message: String,
         title: String,
         priority: Int = 3,
@@ -72,7 +72,7 @@ class ApiService {
         }
     }
 
-    func checkAuth(baseUrl: String, topic: String, user: BasicUser?) async -> AuthResult {
+    func checkAuth(baseUrl: String, topic: String, user: UserCredentials?) async -> AuthResult {
         guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else {
             return .Error("Invalid URL")
         }
@@ -108,7 +108,7 @@ class ApiService {
         }
     }
 
-    private func fetchJsonData<T: Decodable>(urlString: String, user: BasicUser?) async throws -> [T] {
+    private func fetchJsonData<T: Decodable>(urlString: String, user: UserCredentials?) async throws -> [T] {
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
         }
@@ -133,7 +133,7 @@ class ApiService {
         }
     }
     
-    private func newRequest(url: URL, user: BasicUser?, timeout: TimeInterval) -> URLRequest {
+    private func newRequest(url: URL, user: UserCredentials?, timeout: TimeInterval) -> URLRequest {
         var request = URLRequest(url: url, timeoutInterval: timeout)
         request.setValue(ApiService.userAgent, forHTTPHeaderField: "User-Agent")
         if let user = user {
@@ -143,12 +143,29 @@ class ApiService {
     }
 }
 
-struct BasicUser {
-    let username: String
-    let password: String
-    
+/// Credentials sent with every request to a server. ntfy accepts either a username and
+/// password (Basic auth) or an access token (`tk_...`, sent as a Bearer token).
+enum UserCredentials: Equatable {
+    case basic(username: String, password: String)
+    case token(String)
+
     func toHeader() -> String {
-        return "Basic " + String(format: "%@:%@", username, password).data(using: String.Encoding.utf8)!.base64EncodedString()
+        switch self {
+        case .basic(let username, let password):
+            return "Basic " + Data("\(username):\(password)".utf8).base64EncodedString()
+        case .token(let token):
+            return "Bearer \(token)"
+        }
+    }
+
+    /// Human-readable name for error messages, e.g. "user phil" or "this access token".
+    var displayName: String {
+        switch self {
+        case .basic(let username, _):
+            return "user \(username)"
+        case .token:
+            return "this access token"
+        }
     }
 }
 
