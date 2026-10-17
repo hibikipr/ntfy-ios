@@ -37,7 +37,7 @@ enum PublishMessageIntentError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .topicNoLongerSubscribed:
-            return "This topic is no longer subscribed."
+            return String(localized: "This topic is no longer subscribed.")
         }
     }
 }

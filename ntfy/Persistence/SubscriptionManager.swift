@@ -147,25 +147,31 @@ enum PollIssue: Equatable {
 
     var title: String {
         switch self {
-        case .unauthorized: return "Not authorized"
-        case .rateLimited: return "Server limit reached"
-        case .serverError: return "Server error"
-        case .truncated: return "Older messages not loaded"
+        case .unauthorized: return String(localized: "Not authorized")
+        case .rateLimited: return String(localized: "Server limit reached")
+        case .serverError: return String(localized: "Server error")
+        case .truncated: return String(localized: "Older messages not loaded")
         }
     }
 
     var detail: String {
         switch self {
         case .unauthorized:
-            return "The server refused access to this topic. Check the user for this server in Settings."
+            return String(localized: "The server refused access to this topic. Check the user for this server in Settings.")
         case .rateLimited(let until, let message):
             let time = until.formatted(date: .omitted, time: .shortened)
-            return "\(message.map { "\($0.prefix(1).uppercased())\($0.dropFirst()). " } ?? "")Refreshing pauses until \(time)."
+            let pause = String(localized: "Refreshing pauses until \(time).")
+            return message.map { "\(PollIssue.sentence($0)). \(pause)" } ?? pause
         case .serverError(let status, let message):
-            return message.map { "\($0.prefix(1).uppercased())\($0.dropFirst()) (HTTP \(status))." } ?? "The server responded with HTTP \(status)."
+            return message.map { "\(PollIssue.sentence($0)) (HTTP \(status))." } ?? String(localized: "The server responded with HTTP \(status).")
         case .truncated:
-            return "The server only returned its newest messages for this topic."
+            return String(localized: "The server only returned its newest messages for this topic.")
         }
+    }
+
+    /// Server error messages come in English and lowercase, e.g. "limit reached: too many requests"
+    private static func sentence(_ message: String) -> String {
+        return message.prefix(1).uppercased() + message.dropFirst()
     }
 
     var systemImage: String {

@@ -146,11 +146,11 @@ private enum ConfigStatus {
     var label: String {
         switch self {
         case .notConfigured:
-            return "Not configured"
+            return String(localized: "Not configured")
         case .restartRequired:
-            return "Restart required"
+            return String(localized: "Restart required")
         case .configured:
-            return "Configured"
+            return String(localized: "Configured")
         }
     }
 }

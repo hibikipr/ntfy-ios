@@ -8,9 +8,9 @@ private enum PendingAlert: Identifiable {
 
     var title: String {
         switch self {
-        case .clear: return "Clear notifications"
-        case .unsubscribe: return "Unsubscribe"
-        case .selected: return "Delete"
+        case .clear: return String(localized: "Clear notifications")
+        case .unsubscribe: return String(localized: "Unsubscribe")
+        case .selected: return String(localized: "Delete")
         }
     }
 }
@@ -228,8 +228,8 @@ struct NotificationListView: View {
                 Text("To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:")
 
                 HStack(alignment: .top, spacing: 4) {
-                    Text("$")
-                    Text("curl -d \"hi\" \(subscription.urlString())")
+                    Text(verbatim: "$")
+                    Text(verbatim: "curl -d \"hi\" \(subscription.urlString())")
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

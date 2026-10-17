@@ -16,9 +16,9 @@ struct ICloudSyncSettingView: View {
 
     private var statusText: String {
         switch status {
-        case .notSignedIn: return "Not signed into iCloud"
-        case .signedInButNotSyncing: return "Not syncing"
-        case .synced: return "Synced"
+        case .notSignedIn: return String(localized: "Not signed into iCloud")
+        case .signedInButNotSyncing: return String(localized: "Not syncing")
+        case .synced: return String(localized: "Synced")
         }
     }
 

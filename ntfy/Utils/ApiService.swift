@@ -77,20 +77,20 @@ class ApiService {
 
     func checkAuth(baseUrl: String, topic: String, user: UserCredentials?) async -> AuthResult {
         guard let url = URL(string: topicAuthUrl(baseUrl: baseUrl, topic: topic)) else {
-            return .Error("Invalid URL")
+            return .Error(String(localized: "Invalid URL"))
         }
         let request = newRequest(url: url, user: user, timeout: 10)
         Log.d(tag, "Checking auth for \(url) with user \(user != nil ? "<redacted>" : "anonymous")")
         do {
             let (data, response) = try await Self.session.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
-                return .Error("Unexpected response from server")
+                return .Error(String(localized: "Unexpected response from server"))
             }
             if httpResponse.statusCode != 200 {
                 if httpResponse.statusCode == 401 || httpResponse.statusCode == 403 {
                     return .Unauthorized
                 } else {
-                    return .Error("Unexpected response from server: \(httpResponse.statusCode)")
+                    return .Error(String(localized: "Unexpected response from server: \(httpResponse.statusCode)"))
                 }
             }
             do {
@@ -99,11 +99,11 @@ class ApiService {
                 if result.success == true {
                     return .Success
                 } else {
-                    return .Error("Unexpected response from server")
+                    return .Error(String(localized: "Unexpected response from server"))
                 }
             } catch {
                 Log.e(tag, "Error handling auth response: \(error)")
-                return .Error("Unexpected response from server. Is this a ntfy server?")
+                return .Error(String(localized: "Unexpected response from server. Is this a ntfy server?"))
             }
         } catch {
             Log.e(tag, "Error checking auth: \(error)")
@@ -173,9 +173,9 @@ enum UserCredentials: Equatable {
     var displayName: String {
         switch self {
         case .basic(let username, _):
-            return "user \(username)"
+            return String(localized: "user \(username)")
         case .token:
-            return "this access token"
+            return String(localized: "this access token")
         }
     }
 }

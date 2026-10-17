@@ -13,11 +13,11 @@ enum AppIconOption: String, CaseIterable, Identifiable, Hashable {
 
     var displayName: String {
         switch self {
-        case .classic: return "Original"
-        case .orange: return "Glass (Orange)"
-        case .green: return "Glass (Green)"
-        case .red: return "Glass (Red)"
-        case .redDark: return "Glass (Red Dark)"
+        case .classic: return String(localized: "Original")
+        case .orange: return String(localized: "Glass (Orange)")
+        case .green: return String(localized: "Glass (Green)")
+        case .red: return String(localized: "Glass (Red)")
+        case .redDark: return String(localized: "Glass (Red Dark)")
         }
     }
 

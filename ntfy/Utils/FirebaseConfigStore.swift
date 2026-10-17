@@ -30,11 +30,11 @@ enum FirebaseConfigStore {
         var errorDescription: String? {
             switch self {
             case .invalidPlist:
-                return "That file isn't a valid property list."
+                return String(localized: "That file isn't a valid property list.")
             case .missingRequiredKeys:
-                return "That file is missing required Firebase configuration keys."
+                return String(localized: "That file is missing required Firebase configuration keys.")
             case .invalidGoogleAppIDFormat:
-                return "That file's GOOGLE_APP_ID doesn't look like a valid Firebase app ID."
+                return String(localized: "That file's GOOGLE_APP_ID doesn't look like a valid Firebase app ID.")
             }
         }
     }

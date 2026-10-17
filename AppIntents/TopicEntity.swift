@@ -14,7 +14,7 @@ struct TopicEntity: AppEntity {
     static var defaultQuery = TopicEntityQuery()
 
     var displayRepresentation: DisplayRepresentation {
-        DisplayRepresentation(title: "\(displayName)")
+        DisplayRepresentation(title: LocalizedStringResource(stringLiteral: displayName))
     }
 
     init(subscription: Subscription) {

@@ -214,7 +214,7 @@ struct SubscriptionItemRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack {
-                    Text("\(totalNotificationCount) notification\(totalNotificationCount != 1 ? "s" : "")")
+                    Text("\(totalNotificationCount) notifications")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     if unreadCount > 0 {
@@ -264,7 +264,7 @@ struct AllNotificationsRowView: View {
                         .foregroundStyle(.secondary)
                 }
                 HStack {
-                    Text("\(notifications.count) notification\(notifications.count != 1 ? "s" : "") across \(topicCount) topic\(topicCount != 1 ? "s" : "")")
+                    Text("\(notifications.count) notifications across \(topicCount) topics")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     if unreadCount > 0 {

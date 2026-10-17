@@ -185,8 +185,8 @@ private enum AuthMethod: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .password: return "Password"
-        case .token: return "Access token"
+        case .password: return String(localized: "Password")
+        case .token: return String(localized: "Access token")
         }
     }
 }

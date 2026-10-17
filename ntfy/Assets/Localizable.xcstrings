@@ -1,0 +1,284 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%lld notifications" : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld notification"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld notifications"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld notifications across %lld topics" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%#@notifications@ across %#@topics@"
+          },
+          "substitutions" : {
+            "notifications" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg notification"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg notifications"
+                    }
+                  }
+                }
+              }
+            },
+            "topics" : {
+              "argNum" : 2,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg topic"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg topics"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "About" : {},
+    "Access denied: %@ is not authorized to read this topic" : {},
+    "Access token" : {},
+    "Access token (tk_…)" : {},
+    "Add subscription" : {},
+    "Add user" : {},
+    "All Notifications" : {},
+    "Always" : {},
+    "App Icon" : {},
+    "App Store" : {},
+    "Appearance" : {},
+    "Attachment URL is missing." : {},
+    "Attachment download failed." : {},
+    "Attachment is larger than the auto-download limit." : {},
+    "Attachment: %@" : {},
+    "Automatically download attachments up to the selected size. Attachments larger than this limit must be downloaded manually." : {},
+    "Cancel" : {},
+    "Choose an alternate app icon." : {},
+    "Clear Logs" : {},
+    "Clear all" : {},
+    "Clear all notifications" : {},
+    "Clear notifications" : {},
+    "Configured" : {},
+    "Copied to Clipboard" : {},
+    "Copy URL" : {},
+    "Copy message" : {},
+    "Create an access token in the ntfy web app under Account, or with `ntfy token add`. It is used for all topics of %@.%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Create an access token in the ntfy web app under Account, or with `ntfy token add`. It is used for all topics of %1$@.%2$@"
+          }
+        }
+      }
+    },
+    "Critical Alerts" : {},
+    "Critical alerts were not allowed. You can enable them in the iOS notification settings for ntfy." : {},
+    "Default server" : {},
+    "Delete" : {},
+    "Delete download" : {},
+    "Deleted" : {},
+    "Deleted, expired" : {},
+    "Deleted, expires %@" : {},
+    "Detailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs)." : {},
+    "Diagnostics" : {},
+    "Display Name" : {},
+    "Do you really want to delete all of the notifications across every topic?" : {},
+    "Do you really want to delete all of the notifications in this topic?" : {},
+    "Do you really want to delete these selected notifications?" : {},
+    "Do you really want to unsubscribe from this topic and delete all of the notifications you received?" : {},
+    "Done" : {},
+    "Download" : {},
+    "Download attachments" : {},
+    "Download canceled" : {},
+    "Download canceled, expired" : {},
+    "Download canceled, expires %@" : {},
+    "Download failed" : {},
+    "Download failed, expired" : {},
+    "Download failed, expires %@" : {},
+    "Downloading %d%%" : {},
+    "Edit the username or password for %@ here. This user is used for all topics of this server.%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Edit the username or password for %1$@ here. This user is used for all topics of this server.%2$@"
+          }
+        }
+      }
+    },
+    "Edit user" : {},
+    "Emoji" : {},
+    "Enable Critical Alerts" : {},
+    "Firebase Configuration" : {},
+    "Firebase configuration" : {},
+    "Force-quit and reopen the app to apply this change." : {},
+    "General" : {},
+    "Glass (Green)" : {},
+    "Glass (Orange)" : {},
+    "Glass (Red Dark)" : {},
+    "Glass (Red)" : {},
+    "Import Failed" : {},
+    "Import GoogleService-Info.plist" : {},
+    "Import your own GoogleService-Info.plist to receive push notifications through your own Firebase project. Your self-hosted ntfy server must also be configured with matching Firebase credentials." : {},
+    "Import your own GoogleService-Info.plist to receive push notifications through your own Firebase project. Your self-hosted ntfy server must also be configured with matching Firebase credentials. Changes take effect after restarting the app." : {},
+    "Invalid URL" : {},
+    "Invalid credentials, or user %@ is not authorized to read this topic" : {},
+    "Leave empty to show the default topic name." : {},
+    "Loading preview" : {},
+    "Login required" : {},
+    "Message" : {},
+    "More" : {},
+    "Never" : {},
+    "No notifications yet" : {},
+    "No subscriptions yet" : {},
+    "Not authorized" : {},
+    "Not auto-downloaded" : {},
+    "Not auto-downloaded, expires %@" : {},
+    "Not configured" : {},
+    "Not downloaded" : {},
+    "Not downloaded, expired" : {},
+    "Not downloaded, expires %@" : {},
+    "Not signed into iCloud" : {},
+    "Not syncing" : {},
+    "Notifications" : {},
+    "Notifications from all of your subscribed topics will show up here." : {},
+    "OK" : {},
+    "Older messages not loaded" : {},
+    "Open" : {},
+    "Open Notification Settings" : {},
+    "Original" : {},
+    "Password" : {},
+    "Permanently delete" : {},
+    "Project" : {},
+    "Publish Message" : {},
+    "Publishes a message to one of your subscribed ntfy topics." : {},
+    "Push Notifications Backend" : {},
+    "Rate the app" : {},
+    "Read the docs" : {},
+    "Refreshing pauses until %@." : {},
+    "Remove" : {},
+    "Remove Emoji" : {},
+    "Remove Firebase configuration?" : {},
+    "Remove configuration" : {},
+    "Report a bug" : {},
+    "Restart required" : {},
+    "Save" : {},
+    "Search notifications" : {},
+    "Select messages" : {},
+    "Send test notification" : {},
+    "Server error" : {},
+    "Server limit reached" : {},
+    "Service URL, e.g. https://ntfy.home.io" : {},
+    "Settings" : {},
+    "Share" : {},
+    "Share Logs" : {},
+    "Share or clear the app's local log files. Server URLs and topic names may appear in logs; usernames are redacted." : {},
+    "Sign in with" : {},
+    "Subscribe" : {},
+    "Subscribed topics" : {},
+    "Synced" : {},
+    "Tap + to subscribe to a topic. You'll get notified whenever a message is sent to it via PUT or POST.\n\nDetailed instructions are available on [ntfy.sh](https://ntfy.sh) and [in the docs](https://ntfy.sh/docs)." : {},
+    "Tap the field, then tap the globe/emoji key on the keyboard to pick one." : {},
+    "Tap to load image" : {},
+    "That file is missing required Firebase configuration keys." : {},
+    "That file isn't a valid property list." : {},
+    "That file's GOOGLE_APP_ID doesn't look like a valid Firebase app ID." : {},
+    "The last download attempt failed." : {},
+    "The server only returned its newest messages for this topic." : {},
+    "The server refused access to this topic. Check the user for this server in Settings." : {},
+    "The server responded with HTTP %lld." : {},
+    "This file's bundle ID doesn't match this app. Push notifications may not work." : {},
+    "This topic is no longer subscribed." : {},
+    "This topic requires that you log in with username and password. The user will be stored on your device, and will be re-used for other topics." : {},
+    "Title" : {},
+    "To access read-protected topics, you may add or edit users here. All topics for a given server will use the same user." : {},
+    "To ensure instant delivery from your self-hosted server, be sure to set upstream-base-url in your server's config, otherwise messages may arrive with significant delay." : {},
+    "To send notifications to this topic, simply PUT or POST to the topic URL.\n\nExample:" : {},
+    "Topic" : {},
+    "Topic Sync" : {},
+    "Topic name, e.g. phil_alerts" : {},
+    "Topics may not be password-protected, so choose a name that's not easy to guess. Once subscribed, you can PUT/POST notifications" : {},
+    "Under 1 MB" : {},
+    "Under 10 MB" : {},
+    "Under 100 KB" : {},
+    "Under 5 MB" : {},
+    "Under 50 MB" : {},
+    "Under 500 KB" : {},
+    "Unexpected response from server" : {},
+    "Unexpected response from server. Is this a ntfy server?" : {},
+    "Unexpected response from server: %lld" : {},
+    "Unread" : {},
+    "Unsubscribe" : {},
+    "Use another server" : {},
+    "Username" : {},
+    "Users" : {},
+    "Version" : {},
+    "When subscribing to new topics, this server will be used as a default." : {},
+    "When subscribing to new topics, this server will be used as a default. Note that if you pick your own ntfy server, you must configure upstream-base-url to receive instant push notifications." : {},
+    "You can add a user here. All topics for the given server will use this user." : {},
+    "Your subscribed topics sync automatically across your devices when you're signed into iCloud." : {},
+    "download canceled" : {},
+    "download failed" : {},
+    "downloaded" : {},
+    "downloading" : {},
+    "expired" : {},
+    "github.com" : {},
+    "iCloud" : {},
+    "not auto-downloaded" : {},
+    "ntfy %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "ntfy %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "ntfy.sh/docs" : {},
+    "this access token" : {},
+    "user %@" : {},
+    "yesterday" : {}
+  },
+  "version" : "1.0"
+}

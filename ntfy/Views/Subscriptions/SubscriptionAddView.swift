@@ -43,7 +43,7 @@ struct SubscriptionAddView: View {
                 }
                 Section(
                     footer:
-                        (useAnother) ? Text("To ensure instant delivery from your self-hosted server, be sure to set upstream-base-url in your server's config, otherwise messages may arrive with significant delay.") : Text("")
+                        (useAnother) ? Text("To ensure instant delivery from your self-hosted server, be sure to set upstream-base-url in your server's config, otherwise messages may arrive with significant delay.") : Text(verbatim: "")
                 ) {
                     Toggle("Use another server", isOn: $useAnother)
                     if useAnother {
@@ -155,7 +155,7 @@ struct SubscriptionAddView: View {
                 // Do not reset "loading", because resetAndHide() will do that after everything is done
             case .Unauthorized:
                 if let user = user {
-                    addError = "Access denied: \(user.displayName) is not authorized to read this topic"
+                    addError = String(localized: "Access denied: \(user.displayName) is not authorized to read this topic")
                 } else {
                     addError = nil // Reset
                     showLogin = true
@@ -183,7 +183,7 @@ struct SubscriptionAddView: View {
                 }
                 // Do not reset "loading", because resetAndHide() will do that after everything is done
             case .Unauthorized:
-                loginError = "Invalid credentials, or user \(username) is not authorized to read this topic"
+                loginError = String(localized: "Invalid credentials, or user \(username) is not authorized to read this topic")
                 loading = false
             case .Error(let err):
                 loginError = err
