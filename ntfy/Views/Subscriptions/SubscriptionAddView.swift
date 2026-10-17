@@ -143,7 +143,7 @@ struct SubscriptionAddView: View {
     private func subscribeOrShowLoginAction() {
         loading = true
         addError = nil
-        let user = store.getUser(baseUrl: selectedBaseUrl)?.toBasicUser()
+        let user = store.getCredentials(baseUrl: selectedBaseUrl)
         Task {
             let result = await ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user)
             switch result {
@@ -155,7 +155,7 @@ struct SubscriptionAddView: View {
                 // Do not reset "loading", because resetAndHide() will do that after everything is done
             case .Unauthorized:
                 if let user = user {
-                    addError = "User \(user.username) is not authorized to read this topic"
+                    addError = "Access denied: \(user.displayName) is not authorized to read this topic"
                 } else {
                     addError = nil // Reset
                     showLogin = true
@@ -171,7 +171,7 @@ struct SubscriptionAddView: View {
     private func subscribeWithUserAction() {
         loading = true
         loginError = nil
-        let user = BasicUser(username: username, password: password)
+        let user = UserCredentials.basic(username: username, password: password)
         Task {
             let result = await ApiService.shared.checkAuth(baseUrl: selectedBaseUrl, topic: sanitizedTopic, user: user)
             switch result {

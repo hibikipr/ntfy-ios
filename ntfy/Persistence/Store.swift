@@ -50,6 +50,8 @@ class Store: ObservableObject {
     /// Shared with the NSE, which also saves notifications through `saveNotifications`.
     private static let replayTombstones = ReplayTombstones(defaults: sharedDefaults)
     private let container: NSPersistentContainer
+    /// Passwords and access tokens, kept in the Keychain rather than in Core Data.
+    let credentialStore: CredentialStore
     var context: NSManagedObjectContext {
         return container.viewContext
     }
@@ -62,7 +64,10 @@ class Store: ObservableObject {
     /// from inside a `context.perform` block, so the context's own queue serializes access.
     private var isReadFlushScheduled = false
 
-    init(inMemory: Bool = false) {
+    init(inMemory: Bool = false, keychain: KeychainStoring? = nil) {
+        credentialStore = CredentialStore(
+            keychain: keychain ?? (inMemory ? InMemoryKeychain() : SystemKeychain(accessGroup: Store.appGroup))
+        )
         let storeUrl = (inMemory) ? URL(fileURLWithPath: "/dev/null") : FileManager.default
             .containerURL(forSecurityApplicationGroupIdentifier: Store.appGroup)!
             .appendingPathComponent("ntfy.sqlite")
@@ -99,6 +104,7 @@ class Store: ObservableObject {
           .store(in: &cancellables)
 
         backfillSortRankIfNeeded()
+        migrateCredentialsToKeychain()
         unreadCount = unreadNotificationCount()
     }
 
@@ -562,12 +568,36 @@ class Store: ObservableObject {
     // MARK: Users
     
     func saveUser(baseUrl: String, username: String, password: String) {
+        saveUser(baseUrl: baseUrl, credentials: .basic(username: username, password: password))
+    }
+
+    /// The secret goes to the Keychain. If that write fails (e.g. before first unlock), it is
+    /// kept in Core Data instead so it isn't lost, and `migrateCredentialsToKeychain()` moves it
+    /// later. Token users are stored with an empty username, since the attribute is required.
+    func saveUser(baseUrl: String, credentials: UserCredentials) {
         context.perform {
             do {
-                let user = self.getUser(baseUrl: baseUrl) ?? User(context: self.context)
-                user.baseUrl = normalizeBaseUrl(baseUrl)
-                user.username = username
-                user.password = password
+                let normalizedBaseUrl = normalizeBaseUrl(baseUrl)
+                let user = self.getUser(baseUrl: normalizedBaseUrl) ?? User(context: self.context)
+                user.baseUrl = normalizedBaseUrl
+                if case .basic(let username, _) = credentials {
+                    user.username = username
+                } else {
+                    user.username = ""
+                }
+                user.password = ""
+                user.token = nil
+                do {
+                    try self.credentialStore.save(credentials, baseUrl: normalizedBaseUrl)
+                } catch {
+                    Log.w(Store.tag, "Cannot store credentials in Keychain, keeping them in Core Data for now", error)
+                    switch credentials {
+                    case .basic(_, let password):
+                        user.password = password
+                    case .token(let token):
+                        user.token = token
+                    }
+                }
                 try self.context.save()
             } catch let error {
                 Log.w(Store.tag, "Cannot store user", error)
@@ -580,12 +610,44 @@ class Store: ObservableObject {
         try? fetchUser(baseUrl: baseUrl)
     }
 
-    func getBasicUser(baseUrl: String) -> BasicUser? {
-        var basicUser: BasicUser?
+    func getCredentials(baseUrl: String) -> UserCredentials? {
+        var credentials: UserCredentials?
         context.performAndWait {
-            basicUser = try? fetchUser(baseUrl: baseUrl)?.toBasicUser()
+            credentials = try? fetchUser(baseUrl: baseUrl)?.credentials(using: credentialStore)
         }
-        return basicUser
+        return credentials
+    }
+
+    func credentials(for user: User) -> UserCredentials? {
+        user.credentials(using: credentialStore)
+    }
+
+    /// Moves any password or token still stored in Core Data (installs from before secrets moved
+    /// to the Keychain, or saves whose Keychain write failed) into the Keychain, then clears the
+    /// Core Data copy. A Core Data copy is only cleared after the Keychain write is read back, so
+    /// a failure leaves it in place for the next attempt. Safe to run repeatedly, and from both
+    /// the app and the NSE.
+    func migrateCredentialsToKeychain() {
+        context.performAndWait {
+            guard let users = try? context.fetch(User.fetchRequest()) else { return }
+            var changed = false
+            for user in users {
+                guard let baseUrl = user.baseUrl, let credentials = user.coreDataCredentials else { continue }
+                if credentialStore.migrate(credentials, baseUrl: baseUrl) {
+                    user.password = ""
+                    user.token = nil
+                    changed = true
+                }
+            }
+            guard changed else { return }
+            do {
+                try context.save()
+                Log.d(Store.tag, "Moved stored credentials to the Keychain")
+            } catch {
+                Log.w(Store.tag, "Cannot clear migrated credentials from Core Data", error)
+                context.rollback()
+            }
+        }
     }
 
     func findSubscriptionMatch(forPollRequestTopic topic: String, preferredBaseUrl: String? = nil) -> (baseUrl: String, topic: String)? {
@@ -643,6 +705,9 @@ class Store: ObservableObject {
     }
     
     func delete(user: User) {
+        if let baseUrl = user.baseUrl {
+            credentialStore.delete(baseUrl: baseUrl)
+        }
         context.delete(user)
         try? context.save()
     }

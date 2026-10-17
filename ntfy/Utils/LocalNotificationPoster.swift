@@ -7,7 +7,7 @@ enum LocalNotificationPoster {
     /// local notification look exactly like the remote one (same userInfo), so that when we tap it, the userNotificationCenter(didReceive)
     /// function has the same information available.
     static func show(baseUrl: String, message: Message, completionHandler: (() -> Void)? = nil) {
-        let user = Store.shared.getUser(baseUrl: baseUrl)?.toBasicUser()
+        let user = Store.shared.getCredentials(baseUrl: baseUrl)
         let content = UNMutableNotificationContent()
         content.modify(message: message, baseUrl: baseUrl)
         content.attachImageIfNeeded(message: message, user: user) {

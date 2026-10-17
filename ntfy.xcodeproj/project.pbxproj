@@ -37,7 +37,9 @@
 		29F001032FB560E300F927E4 /* AttachmentFileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29E8419D2FB417EA00F927E4 /* AttachmentFileStore.swift */; };
 		6C21F449237133E259BCFDDA /* LogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 629C58C52864F45D40E2D286 /* LogExporter.swift */; };
 		9407EDDA284ADE1F00C1C334 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9407EDD9284ADE1F00C1C334 /* User.swift */; };
+		90AFC54BBEC34DEEB643507F /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 655B39A066D143F69E7694FD /* CredentialStore.swift */; };
 		9407EDDB284ADE1F00C1C334 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9407EDD9284ADE1F00C1C334 /* User.swift */; };
+		43A1F06F004141949CCA17E9 /* CredentialStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 655B39A066D143F69E7694FD /* CredentialStore.swift */; };
 		9474F1C1282F2AA700CDE4DD /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474F1C0282F2AA700CDE4DD /* AppMain.swift */; };
 		9474F1C3282F2AA700CDE4DD /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9474F1C2282F2AA700CDE4DD /* ContentView.swift */; };
 		9474F1C5282F2AA800CDE4DD /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9474F1C4282F2AA800CDE4DD /* Assets.xcassets */; };
@@ -158,6 +160,7 @@
 		657B5A8147018ECD39100744 /* AllNotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AllNotificationsView.swift; sourceTree = "<group>"; };
 		8A765B8F3A4D2AA84D03DE3C /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		9407EDD9284ADE1F00C1C334 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		655B39A066D143F69E7694FD /* CredentialStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CredentialStore.swift; sourceTree = "<group>"; };
 		9474F1BD282F2AA700CDE4DD /* ntfy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ntfy.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9474F1C0282F2AA700CDE4DD /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
 		9474F1C2282F2AA700CDE4DD /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -370,6 +373,7 @@
 				94A3F7C7283734D900C48E79 /* SubscriptionManager.swift */,
 				E270080F2AF0F64B006E33BA /* SubscriptionsObservable.swift */,
 				9407EDD9284ADE1F00C1C334 /* User.swift */,
+				655B39A066D143F69E7694FD /* CredentialStore.swift */,
 				FD3DE5633038BB7D00B23FC4 /* TopicSyncDiff.swift */,
 				FD3DE60A3038FDF900B23FC4 /* TopicSync.xcdatamodeld */,
 				FD3DE6103039000D00B23FC4 /* TopicSyncStore.swift */,
@@ -642,6 +646,7 @@
 				29E841AA2FB417EA00F927E4 /* NotificationAttachmentSectionView.swift in Sources */,
 				29E841AB2FB417EA00F927E4 /* NotificationListView.swift in Sources */,
 				9407EDDA284ADE1F00C1C334 /* User.swift in Sources */,
+				90AFC54BBEC34DEEB643507F /* CredentialStore.swift in Sources */,
 				AD9B0E1AD003187C01D1478B /* AppIconOption.swift in Sources */,
 				16C6D248BD5824E13999EDD8 /* AppIconPickerView.swift in Sources */,
 			);
@@ -652,6 +657,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9407EDDB284ADE1F00C1C334 /* User.swift in Sources */,
+				43A1F06F004141949CCA17E9 /* CredentialStore.swift in Sources */,
 				9474F2132834755A00CDE4DD /* Notification.swift in Sources */,
 				94E9196C28353E0100F30170 /* Log.swift in Sources */,
 				9474F2152834758700CDE4DD /* Helpers.swift in Sources */,
