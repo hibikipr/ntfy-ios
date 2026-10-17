@@ -45,6 +45,8 @@ class Store: ObservableObject {
     private static let sharedDefaults = UserDefaults(suiteName: Store.appGroup)!
     private static let sharedDefaultsKeyCriticalAlertsAuthorized = "criticalAlertsAuthorized"
     private static let sharedDefaultsKeyDidBackfillSortRank = "Store.didBackfillSortRank"
+    private static let defaultsKeyLastHistoryToken = "Store.lastHistoryToken"
+    private static let historyRetention: TimeInterval = 7 * 24 * 60 * 60
     /// Shared with the NSE, which also saves notifications through `saveNotifications`.
     private static let replayTombstones = ReplayTombstones(defaults: sharedDefaults)
     private let container: NSPersistentContainer
@@ -66,6 +68,8 @@ class Store: ObservableObject {
             .appendingPathComponent("ntfy.sqlite")
         let description = NSPersistentStoreDescription(url: storeUrl)
         description.setOption(true as NSNumber, forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
+        // Lets mergeRemoteChanges() merge just what the NSE changed instead of refreshing everything
+        description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
         description.shouldMigrateStoreAutomatically = true
         description.shouldInferMappingModelAutomatically = true
 
@@ -83,17 +87,13 @@ class Store: ObservableObject {
         context.mergePolicy = NSMergePolicy(merge: .mergeByPropertyStoreTrumpMergePolicyType) // https://stackoverflow.com/a/60362945/1440785
         context.transactionAuthor = Bundle.main.bundlePath.hasSuffix(".appex") ? "ntfy.appex" : "ntfy"
         
-        // When a remote change comes in (= the app extension updated entities in Core Data),
-        // we force refresh the view with horrible means. Please help me make this better!
+        // A remote change is posted for every store write, including this process's own saves.
+        // mergeRemoteChanges() picks out the ones made elsewhere (the NSE) from the store history.
         NotificationCenter.default
           .publisher(for: .NSPersistentStoreRemoteChange)
-          .sink { value in
-              // TODO: this could probably broadcast the name of the channel
-              // so that only relevant views can update.
-              Log.d(Store.tag, "Remote change detected, refreshing views", value)
-
+          .sink { _ in
               DispatchQueue.main.async {
-                  self.hardRefresh()
+                  self.mergeRemoteChanges()
               }
           }
           .store(in: &cancellables)
@@ -111,15 +111,89 @@ class Store: ObservableObject {
         hardRefresh()
     }
 
+    /// Merges the changes other processes (the NSE) wrote since the last call into `context`,
+    /// using persistent history, and refreshes views only if there were any. Falls back to
+    /// `hardRefresh()` when the history can't be read, e.g. after it was purged.
+    func mergeRemoteChanges() {
+        context.performAndWait {
+            let request = NSPersistentHistoryChangeRequest.fetchHistory(after: lastHistoryToken)
+            request.resultType = .transactionsAndChanges
+            let transactions: [NSPersistentHistoryTransaction]
+            do {
+                let result = try context.execute(request) as? NSPersistentHistoryResult
+                transactions = result?.result as? [NSPersistentHistoryTransaction] ?? []
+            } catch {
+                // Most likely the token expired because its history was purged. Start over from
+                // now, or every later merge would fail the same way.
+                Log.w(Store.tag, "Cannot read persistent history, refreshing all objects", error)
+                lastHistoryToken = container.persistentStoreCoordinator.currentPersistentHistoryToken(fromStores: nil)
+                hardRefresh()
+                return
+            }
+            guard let lastToken = transactions.last?.token else { return }
+            lastHistoryToken = lastToken
+            purgeHistory()
+
+            var inserted: [NSManagedObjectID] = []
+            var updated: [NSManagedObjectID] = []
+            var deleted: [NSManagedObjectID] = []
+            let remoteChanges = transactions
+                .filter { $0.author != context.transactionAuthor }
+                .flatMap { $0.changes ?? [] }
+            for change in remoteChanges {
+                switch change.changeType {
+                case .insert: inserted.append(change.changedObjectID)
+                case .update: updated.append(change.changedObjectID)
+                case .delete: deleted.append(change.changedObjectID)
+                @unknown default: break
+                }
+            }
+            guard !remoteChanges.isEmpty else { return }
+            Log.d(Store.tag, "Merging remote changes: \(inserted.count) inserted, \(updated.count) updated, \(deleted.count) deleted")
+            NSManagedObjectContext.mergeChanges(
+                fromRemoteContextSave: [NSInsertedObjectsKey: inserted, NSUpdatedObjectsKey: updated, NSDeletedObjectsKey: deleted],
+                into: [context]
+            )
+            syncBadgeCount()
+            NotificationCenter.default.post(name: Store.didHardRefreshNotification, object: self)
+        }
+    }
+
+    /// Where `mergeRemoteChanges()` left off. Per process: only the app merges, so it lives in the
+    /// app's standard defaults rather than the shared app group.
+    private var lastHistoryToken: NSPersistentHistoryToken? {
+        get {
+            guard let data = UserDefaults.standard.data(forKey: Store.defaultsKeyLastHistoryToken) else { return nil }
+            return try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSPersistentHistoryToken.self, from: data)
+        }
+        set {
+            let data = newValue.flatMap { try? NSKeyedArchiver.archivedData(withRootObject: $0, requiringSecureCoding: true) }
+            UserDefaults.standard.set(data, forKey: Store.defaultsKeyLastHistoryToken)
+        }
+    }
+
+    /// Drops history older than a week, at most once a day. The app merges whenever it becomes
+    /// active, so it has long since read it; if it hasn't, mergeRemoteChanges() falls back to a
+    /// full refresh.
+    private func purgeHistory() {
+        guard lastHistoryPurge < Date().addingTimeInterval(-24 * 60 * 60) else { return }
+        do {
+            try context.execute(NSPersistentHistoryChangeRequest.deleteHistory(before: Date().addingTimeInterval(-Store.historyRetention)))
+            lastHistoryPurge = Date()
+        } catch {
+            Log.w(Store.tag, "Cannot purge persistent history", error)
+        }
+    }
+
+    private var lastHistoryPurge = Date.distantPast
+
     func hardRefresh() {
         // `refreshAllObjects` only refreshes objects from which the cache is invalid. With a staleness intervall of -1 the cache never invalidates.
         // We set the `stalenessInterval` to 0 to make sure that changes in the app extension get processed correctly.
         // From: https://www.avanderlee.com/swift/core-data-app-extension-data-sharing/
         //
-        // TODO(perf): this refreshes every managed object currently registered in the context, which
-        // runs on every single remote-change notification (i.e. every NSE-delivered push while the app
-        // is foregrounded). Once the object graph is large, consider refreshing only the objects that
-        // actually changed instead of the whole context.
+        // This refreshes every managed object registered in the context, so remote changes go
+        // through mergeRemoteChanges() instead, which only falls back to this.
 
         context.stalenessInterval = 0
         context.refreshAllObjects()

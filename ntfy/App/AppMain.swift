@@ -44,7 +44,7 @@ struct AppMain: App {
 
     private func refreshAfterBecomingActive() {
         Log.d(tag, "App became active, refreshing objects")
-        store.hardRefresh()
+        store.mergeRemoteChanges()
         delegate.refreshNotificationSettings()
         delegate.subscribeToFirebaseTopics()
     }
