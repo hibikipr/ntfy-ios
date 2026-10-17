@@ -61,6 +61,7 @@ struct SettingsView: View {
         .sheet(item: $userDialog) { dialog in
             UserEditorView(
                 selectedUser: dialog.user,
+                storedCredentials: dialog.user.flatMap { store.credentials(for: $0) },
                 onSave: { baseUrl, credentials in
                     store.saveUser(baseUrl: baseUrl, credentials: credentials)
                     userDialog = nil

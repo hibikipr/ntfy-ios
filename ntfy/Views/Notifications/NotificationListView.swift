@@ -253,7 +253,7 @@ struct NotificationListView: View {
         let priority = Int.random(in: 1..<6)
         let tags = Array(possibleTags.shuffled().prefix(Int.random(in: 0..<4)))
 
-        let user = store.getUser(baseUrl: baseUrl)?.toCredentials()
+        let user = store.getCredentials(baseUrl: baseUrl)
         Task {
             do {
                 try await ApiService.shared.publish(

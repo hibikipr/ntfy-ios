@@ -16,11 +16,12 @@ struct UserRowView: View {
         // I tried to add a swipe action here to delete, but for some strange reason it doesn't work,
         // even though in the subscription list it does.
         
+        let usesAccessToken = store.credentials(for: user)?.isToken == true
         HStack {
-            Image(systemName: user.usesAccessToken ? "key.fill" : "person.fill")
+            Image(systemName: usesAccessToken ? "key.fill" : "person.fill")
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(user.usesAccessToken ? "Access token" : (user.username ?? "?"))
+                    Text(usesAccessToken ? "Access token" : (user.username ?? "?"))
                     Text(user.baseUrl ?? "?")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

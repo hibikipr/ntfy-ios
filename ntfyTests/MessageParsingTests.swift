@@ -1,5 +1,6 @@
 import XCTest
 import UserNotifications
+import Security
 @testable import ntfy
 
 final class MessageParsingTests: XCTestCase {
@@ -201,29 +202,6 @@ final class MessageParsingTests: XCTestCase {
         XCTAssertEqual(user.toHeader(), "Bearer tk_AgQdq7mVBoFD37zQVN29RhuMzNIz2")
     }
 
-    func testUserWithTokenPrefersTokenOverPassword() {
-        let store = Store(inMemory: true)
-        let user = User(context: store.context)
-        user.baseUrl = "https://ntfy.sh"
-        user.username = "phil"
-        user.password = "phil123"
-        user.token = "tk_abc"
-        XCTAssertEqual(user.toCredentials(), .token("tk_abc"))
-        XCTAssertEqual(user.toCredentials().toHeader(), "Bearer tk_abc")
-    }
-
-    func testUserWithoutTokenUsesBasicAuth() {
-        let store = Store(inMemory: true)
-        let user = User(context: store.context)
-        user.baseUrl = "https://ntfy.sh"
-        user.username = "phil"
-        user.password = "phil123"
-        XCTAssertEqual(user.toCredentials(), .basic(username: "phil", password: "phil123"))
-
-        user.token = ""
-        XCTAssertEqual(user.toCredentials(), .basic(username: "phil", password: "phil123"))
-    }
-
     func testSaveUserSwitchesBetweenTokenAndPassword() {
         let store = Store(inMemory: true)
         let baseUrl = "https://ntfy.example.com"
@@ -235,10 +213,165 @@ final class MessageParsingTests: XCTestCase {
         store.saveUser(baseUrl: baseUrl, credentials: .basic(username: "phil", password: "phil123"))
         waitForStore(store)
         XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
-        XCTAssertNil(store.getUser(baseUrl: baseUrl)?.token)
+        XCTAssertNil(store.credentialStore.token(baseUrl: baseUrl))
+    }
+}
+
+/// In-memory Keychain whose writes can be made to fail, e.g. like before first unlock.
+private final class FakeKeychain: KeychainStoring {
+    let backing = InMemoryKeychain()
+    var failWrites = false
+    private(set) var writeCount = 0
+
+    func string(service: String, account: String) throws -> String? {
+        try backing.string(service: service, account: account)
     }
 
-    private func waitForStore(_ store: Store) {
+    func set(_ value: String, service: String, account: String) throws {
+        writeCount += 1
+        if failWrites {
+            throw KeychainError(status: errSecInteractionNotAllowed)
+        }
+        try backing.set(value, service: service, account: account)
+    }
+
+    func remove(service: String, account: String) throws {
+        try backing.remove(service: service, account: account)
+    }
+}
+
+final class CredentialKeychainTests: XCTestCase {
+    private let baseUrl = "https://ntfy.example.com"
+
+    func testSaveUserPutsSecretsInKeychainNotCoreData() {
+        let keychain = FakeKeychain()
+        let store = Store(inMemory: true, keychain: keychain)
+
+        store.saveUser(baseUrl: baseUrl, credentials: .basic(username: "phil", password: "phil123"))
+        waitForStore(store)
+        XCTAssertEqual(store.getUser(baseUrl: baseUrl)?.password, "")
+        XCTAssertNil(store.getUser(baseUrl: baseUrl)?.token)
+        XCTAssertEqual(store.credentialStore.password(baseUrl: baseUrl), "phil123")
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+
+        store.saveUser(baseUrl: baseUrl, credentials: .token("tk_abc"))
+        waitForStore(store)
+        XCTAssertNil(store.getUser(baseUrl: baseUrl)?.token)
+        XCTAssertEqual(store.credentialStore.token(baseUrl: baseUrl), "tk_abc")
+        XCTAssertNil(store.credentialStore.password(baseUrl: baseUrl))
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .token("tk_abc"))
+    }
+
+    func testSaveUserKeepsSecretInCoreDataWhenKeychainWriteFails() {
+        let keychain = FakeKeychain()
+        keychain.failWrites = true
+        let store = Store(inMemory: true, keychain: keychain)
+
+        store.saveUser(baseUrl: baseUrl, credentials: .basic(username: "phil", password: "phil123"))
+        waitForStore(store)
+        XCTAssertEqual(store.getUser(baseUrl: baseUrl)?.password, "phil123")
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+
+        // Once the Keychain is writable again, the migration moves the password over
+        keychain.failWrites = false
+        store.migrateCredentialsToKeychain()
+        XCTAssertEqual(store.getUser(baseUrl: baseUrl)?.password, "")
+        XCTAssertEqual(store.credentialStore.password(baseUrl: baseUrl), "phil123")
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+    }
+
+    func testMigrationMovesLegacyCoreDataPasswordToKeychain() {
+        let keychain = FakeKeychain()
+        let store = Store(inMemory: true, keychain: keychain)
+        insertLegacyUser(into: store, username: "phil", password: "phil123")
+
+        store.migrateCredentialsToKeychain()
+
+        XCTAssertEqual(store.getUser(baseUrl: baseUrl)?.password, "")
+        XCTAssertEqual(store.credentialStore.password(baseUrl: baseUrl), "phil123")
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+    }
+
+    func testMigrationIsIdempotent() {
+        let keychain = FakeKeychain()
+        let store = Store(inMemory: true, keychain: keychain)
+        insertLegacyUser(into: store, username: "phil", password: "phil123")
+
+        store.migrateCredentialsToKeychain()
+        let writesAfterFirstRun = keychain.writeCount
+        store.migrateCredentialsToKeychain()
+
+        XCTAssertEqual(keychain.writeCount, writesAfterFirstRun)
+        XCTAssertEqual(store.credentialStore.password(baseUrl: baseUrl), "phil123")
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+    }
+
+    func testMigrationKeepsCoreDataPasswordWhenKeychainWriteFails() {
+        let keychain = FakeKeychain()
+        keychain.failWrites = true
+        let store = Store(inMemory: true, keychain: keychain)
+        insertLegacyUser(into: store, username: "phil", password: "phil123")
+
+        store.migrateCredentialsToKeychain()
+
+        XCTAssertEqual(store.getUser(baseUrl: baseUrl)?.password, "phil123")
+        XCTAssertNil(store.credentialStore.password(baseUrl: baseUrl))
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "phil123"))
+    }
+
+    func testCoreDataSecretWinsOverStaleKeychainSecret() {
+        let keychain = FakeKeychain()
+        let store = Store(inMemory: true, keychain: keychain)
+        try? keychain.set("old-password", service: CredentialStore.passwordService, account: baseUrl)
+        insertLegacyUser(into: store, username: "phil", password: "new-password")
+
+        XCTAssertEqual(store.getCredentials(baseUrl: baseUrl), .basic(username: "phil", password: "new-password"))
+        store.migrateCredentialsToKeychain()
+        XCTAssertEqual(store.credentialStore.password(baseUrl: baseUrl), "new-password")
+    }
+
+    func testDeleteUserRemovesKeychainItems() {
+        let keychain = FakeKeychain()
+        let store = Store(inMemory: true, keychain: keychain)
+        store.saveUser(baseUrl: baseUrl, credentials: .token("tk_abc"))
+        waitForStore(store)
+        guard let user = store.getUser(baseUrl: baseUrl) else {
+            return XCTFail("user not saved")
+        }
+
+        store.delete(user: user)
+
+        XCTAssertNil(store.credentialStore.token(baseUrl: baseUrl))
+        XCTAssertNil(store.getCredentials(baseUrl: baseUrl))
+    }
+
+    func testSystemKeychainRoundTripsInSharedAccessGroup() throws {
+        let keychain = SystemKeychain(accessGroup: Store.appGroup)
+        let service = "ntfy.tests"
+        let account = "https://ntfy.example.com/\(UUID().uuidString)"
+        defer { try? keychain.remove(service: service, account: account) }
+
+        try keychain.set("first", service: service, account: account)
+        try keychain.set("second", service: service, account: account)
+        XCTAssertEqual(try keychain.string(service: service, account: account), "second")
+
+        try keychain.remove(service: service, account: account)
+        XCTAssertNil(try keychain.string(service: service, account: account))
+    }
+
+    private func insertLegacyUser(into store: Store, username: String, password: String) {
+        store.context.performAndWait {
+            let user = User(context: store.context)
+            user.baseUrl = baseUrl
+            user.username = username
+            user.password = password
+            try? store.context.save()
+        }
+    }
+}
+
+private extension XCTestCase {
+    func waitForStore(_ store: Store) {
         // saveUser runs in context.perform; a later perform on the same queue runs after it.
         let saved = expectation(description: "store saved")
         store.context.perform { saved.fulfill() }

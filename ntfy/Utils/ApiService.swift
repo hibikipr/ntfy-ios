@@ -158,6 +158,11 @@ enum UserCredentials: Equatable {
         }
     }
 
+    var isToken: Bool {
+        if case .token = self { return true }
+        return false
+    }
+
     /// Human-readable name for error messages, e.g. "user phil" or "this access token".
     var displayName: String {
         switch self {

@@ -11,6 +11,8 @@ struct UserEditorView: View {
     @EnvironmentObject private var store: Store
     
     let selectedUser: User?
+    /// The selected user's saved credentials, used to keep the secret when its field is left blank.
+    let storedCredentials: UserCredentials?
     let onSave: (String, UserCredentials) -> Void
     let onDelete: (User) -> Void
     let onCancel: () -> Void
@@ -23,11 +25,13 @@ struct UserEditorView: View {
     
     init(
         selectedUser: User?,
+        storedCredentials: UserCredentials?,
         onSave: @escaping (String, UserCredentials) -> Void,
         onDelete: @escaping (User) -> Void,
         onCancel: @escaping () -> Void
     ) {
         self.selectedUser = selectedUser
+        self.storedCredentials = storedCredentials
         self.onSave = onSave
         self.onDelete = onDelete
         self.onCancel = onCancel
@@ -35,7 +39,7 @@ struct UserEditorView: View {
         _username = State(initialValue: selectedUser?.username ?? "")
         _password = State(initialValue: "")
         _token = State(initialValue: "")
-        _authMethod = State(initialValue: selectedUser?.usesAccessToken == true ? .token : .password)
+        _authMethod = State(initialValue: storedCredentials?.isToken == true ? .token : .password)
     }
     
     var body: some View {
@@ -111,8 +115,8 @@ struct UserEditorView: View {
     /// Whether a blank secret field may keep the stored secret: only when editing a user that
     /// already signs in with the selected method.
     private var canKeepStoredSecret: Bool {
-        guard let selectedUser else { return false }
-        return selectedUser.usesAccessToken == (authMethod == .token)
+        guard let storedCredentials else { return false }
+        return storedCredentials.isToken == (authMethod == .token)
     }
 
     private var trimmedToken: String {
@@ -134,16 +138,16 @@ struct UserEditorView: View {
         switch authMethod {
         case .password:
             let finalPassword: String
-            if let user = selectedUser, canKeepStoredSecret, password.isEmpty {
-                finalPassword = user.password ?? "?"
+            if canKeepStoredSecret, password.isEmpty, case .basic(_, let storedPassword) = storedCredentials {
+                finalPassword = storedPassword
             } else {
                 finalPassword = password
             }
             onSave(baseUrl, .basic(username: username, password: finalPassword))
         case .token:
             let finalToken: String
-            if let user = selectedUser, canKeepStoredSecret, trimmedToken.isEmpty {
-                finalToken = user.token ?? ""
+            if canKeepStoredSecret, trimmedToken.isEmpty, case .token(let storedToken) = storedCredentials {
+                finalToken = storedToken
             } else {
                 finalToken = trimmedToken
             }
