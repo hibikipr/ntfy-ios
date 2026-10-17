@@ -81,7 +81,7 @@ class NotificationService: UNNotificationServiceExtension {
             let user = self.store?.getBasicUser(baseUrl: baseUrl)
             content.modify(message: message, baseUrl: baseUrl)
             content.attachImageIfNeeded(message: message, user: user) {
-                contentHandler(content)
+                content.withIconIfNeeded(message: message, completionHandler: contentHandler)
             }
         }
     }

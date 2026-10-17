@@ -84,18 +84,26 @@ struct NotificationRowView: View {
                     }
                 }
                 .padding([.bottom], 2)
-                if let title = notification.formatTitle(), title != "" {
-                    Text(title)
-                        .font(.headline)
-                        .bold()
-                        .padding([.bottom], 2)
-                }
-                messageText
-                if !notification.nonEmojiTags().isEmpty {
-                    Text("Tags: " + notification.nonEmojiTags().joined(separator: ", "))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .padding([.top], 2)
+                HStack(alignment: .top, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let title = notification.formatTitle(), title != "" {
+                            Text(title)
+                                .font(.headline)
+                                .bold()
+                                .padding([.bottom], 2)
+                        }
+                        messageText
+                        if !notification.nonEmojiTags().isEmpty {
+                            Text("Tags: " + notification.nonEmojiTags().joined(separator: ", "))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .padding([.top], 2)
+                        }
+                    }
+                    if let iconUrl = notification.iconUrl() {
+                        Spacer(minLength: 0)
+                        NotificationIconView(url: iconUrl)
+                    }
                 }
             }
             .contentShape(Rectangle())
@@ -124,6 +132,10 @@ struct NotificationRowView: View {
                     ForEach(notification.actionsList()) { action in
                         Button(action.label) {
                             ActionExecutor.execute(action)
+                            if action.action == "copy" {
+                                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                                showCopyFeedback()
+                            }
                         }
                         .buttonStyle(.glassProminent)
                     }
@@ -194,6 +206,55 @@ struct NotificationRowView: View {
 
 // MARK: Helper structs
 extension NotificationRowView {
+    /// The message icon (see `Message.icon`). Downloads it the way the notification service
+    /// extension does, unless the extension cached it already.
+    private struct NotificationIconView: View {
+        @EnvironmentObject private var store: Store
+        let url: URL
+        @State private var image: UIImage?
+        private static let cache = NSCache<NSURL, UIImage>()
+
+        var body: some View {
+            Group {
+                if let image {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 40, height: 40)
+                        .clipShape(.rect(cornerRadius: 8))
+                        .accessibilityHidden(true)
+                }
+            }
+            .task(id: url) {
+                image = await loadImage()
+            }
+        }
+
+        private func loadImage() async -> UIImage? {
+            if let cached = Self.cache.object(forKey: url as NSURL) {
+                return cached
+            }
+            let fileUrl: URL
+            if let cached = NotificationIconStore.cachedFileUrl(for: url) {
+                fileUrl = cached
+            } else if let maxSize = NotificationIconStore.maxDownloadSize(
+                autoDownloadMaxSize: store.getAttachmentAutoDownloadMaxSize()
+            ), let downloaded = try? await NotificationIconStore.icon(for: url, maxSize: maxSize) {
+                fileUrl = downloaded
+            } else {
+                return nil
+            }
+            let path = fileUrl.path
+            let image = await Task.detached(priority: .userInitiated) {
+                UIImage(contentsOfFile: path)
+            }.value
+            if let image {
+                Self.cache.setObject(image, forKey: url as NSURL)
+            }
+            return image
+        }
+    }
+
     private struct ActivityView: UIViewControllerRepresentable {
         let activityItems: [Any]
 

@@ -11,6 +11,7 @@
         <attribute name="attachmentUrl" optional="YES" attributeType="String"/>
         <attribute name="click" optional="YES" attributeType="String"/>
         <attribute name="contentType" optional="YES" attributeType="String"/>
+        <attribute name="icon" optional="YES" attributeType="String"/>
         <attribute name="id" attributeType="String"/>
         <attribute name="isRead" optional="YES" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES" indexed="YES"/>
         <attribute name="message" attributeType="String"/>

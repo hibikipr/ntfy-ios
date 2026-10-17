@@ -852,6 +852,7 @@ class Store: ObservableObject {
         notification.actions = Actions.shared.encode(message.actions)
         notification.click = message.click ?? ""
         notification.contentType = message.contentType
+        notification.icon = message.iconUrl?.absoluteString
         notification.attachmentName = message.attachment?.name
         notification.attachmentType = message.attachment?.type
         notification.attachmentSize = message.attachment?.size ?? 0
