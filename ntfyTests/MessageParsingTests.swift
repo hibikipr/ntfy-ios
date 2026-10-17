@@ -190,3 +190,55 @@ final class MessageParsingTests: XCTestCase {
         XCTAssertEqual(user.toHeader(), "Basic cGhpbDpwaGlsMTIz")
     }
 }
+
+final class ReplayTombstonesTests: XCTestCase {
+    private var defaults: UserDefaults!
+    private let suiteName = "ReplayTombstonesTests"
+
+    override func setUp() {
+        super.setUp()
+        defaults = UserDefaults(suiteName: suiteName)
+        defaults.removePersistentDomain(forName: suiteName)
+    }
+
+    override func tearDown() {
+        defaults.removePersistentDomain(forName: suiteName)
+        super.tearDown()
+    }
+
+    func testRemembersAddedIDs() {
+        let tombstones = ReplayTombstones(defaults: defaults)
+        tombstones.add(["a": 1_000, "b": 1_000], now: 1_000)
+
+        XCTAssertTrue(tombstones.contains("a"))
+        XCTAssertTrue(tombstones.contains("b"))
+        XCTAssertFalse(tombstones.contains("c"))
+    }
+
+    func testPersistsAcrossInstances() {
+        ReplayTombstones(defaults: defaults).add(["a": 1_000], now: 1_000)
+
+        XCTAssertTrue(ReplayTombstones(defaults: defaults).contains("a"))
+    }
+
+    func testDropsEntriesOlderThanMaxAge() {
+        let tombstones = ReplayTombstones(defaults: defaults)
+        tombstones.add(["old": 0], now: 0)
+        tombstones.add(["new": ReplayTombstones.maxAge + 1], now: ReplayTombstones.maxAge + 1)
+
+        XCTAssertFalse(tombstones.contains("old"))
+        XCTAssertTrue(tombstones.contains("new"))
+    }
+
+    func testKeepsOnlyNewestMaxEntries() {
+        let tombstones = ReplayTombstones(defaults: defaults)
+        let count = ReplayTombstones.maxEntries + 10
+        let entries = Dictionary(uniqueKeysWithValues: (0..<count).map { ("id\($0)", Int64($0)) })
+        tombstones.add(entries, now: Int64(count))
+
+        XCTAssertFalse(tombstones.contains("id0"))
+        XCTAssertFalse(tombstones.contains("id9"))
+        XCTAssertTrue(tombstones.contains("id10"))
+        XCTAssertTrue(tombstones.contains("id\(count - 1)"))
+    }
+}

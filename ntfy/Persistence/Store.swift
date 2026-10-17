@@ -45,6 +45,8 @@ class Store: ObservableObject {
     private static let sharedDefaults = UserDefaults(suiteName: Store.appGroup)!
     private static let sharedDefaultsKeyCriticalAlertsAuthorized = "criticalAlertsAuthorized"
     private static let sharedDefaultsKeyDidBackfillSortRank = "Store.didBackfillSortRank"
+    /// Shared with the NSE, which also saves notifications through `saveNotifications`.
+    private static let replayTombstones = ReplayTombstones(defaults: sharedDefaults)
     private let container: NSPersistentContainer
     var context: NSManagedObjectContext {
         return container.viewContext
@@ -338,6 +340,7 @@ class Store: ObservableObject {
     func delete(notification: Notification) {
         context.performAndWait {
             Log.d(Store.tag, "Deleting notification \(notification.id ?? "")")
+            rememberReplayableDeletions([notification])
             deleteAttachmentLocalFile(for: notification)
             context.delete(notification)
             try? context.save()
@@ -348,6 +351,7 @@ class Store: ObservableObject {
     func delete(notifications: Set<Notification>) {
         context.performAndWait {
             Log.d(Store.tag, "Deleting \(notifications.count) notification(s)")
+            rememberReplayableDeletions(Array(notifications))
             do {
                 notifications.forEach { notification in
                     deleteAttachmentLocalFile(for: notification)
@@ -366,6 +370,7 @@ class Store: ObservableObject {
         context.performAndWait {
             guard let notifications = subscription.notifications else { return }
             Log.d(Store.tag, "Deleting all \(notifications.count) notification(s) for subscription \(subscription.urlString())")
+            rememberReplayableDeletions(notifications.compactMap { $0 as? Notification })
             do {
                 notifications.forEach { notification in
                     guard let notification = notification as? Notification else { return }
@@ -385,6 +390,7 @@ class Store: ObservableObject {
         context.performAndWait {
             guard let notifications = try? context.fetch(Notification.fetchRequest()) else { return }
             Log.d(Store.tag, "Deleting all \(notifications.count) notification(s) across all subscriptions")
+            rememberReplayableDeletions(notifications)
             do {
                 notifications.forEach { notification in
                     deleteAttachmentLocalFile(for: notification)
@@ -686,7 +692,14 @@ class Store: ObservableObject {
         existingRequest.predicate = NSPredicate(format: "id IN %@", ids)
         let existingNotifications = try context.fetch(existingRequest)
         let existingIDs = Set(existingNotifications.compactMap(\.id))
-        let newMessages = messages.filter { !existingIDs.contains($0.id) }
+        // Polls also return `message_delete`/`message_clear` events, which aren't notifications
+        // to show. Tombstoned IDs were deleted here but can be replayed by `since=<id>` (see
+        // `ReplayTombstones`).
+        let newMessages = messages.filter { message in
+            message.event == "message"
+                && !existingIDs.contains(message.id)
+                && !Store.replayTombstones.contains(message.id)
+        }
 
         guard !newMessages.isEmpty else {
             if let lastMessage = messages.last {
@@ -737,11 +750,69 @@ class Store: ObservableObject {
         return newMessages
     }
 
+    /// Remembers deleted notifications that a `since=<id>` poll can return again: those from the
+    /// newest second of their subscription, which is where the poll marker sits. Must be called
+    /// before the notifications are deleted, while their subscription is still reachable.
+    private func rememberReplayableDeletions(_ notifications: [Notification]) {
+        var entries: [String: Int64] = [:]
+        let bySubscription = Dictionary(grouping: notifications) { $0.subscription?.objectID }
+        for (_, group) in bySubscription {
+            let newestTime = group.first?.subscription?.notifications?
+                .compactMap { ($0 as? Notification)?.time }
+                .max() ?? group.map(\.time).max() ?? 0
+            for notification in group where notification.time >= newestTime {
+                if let id = notification.id {
+                    entries[id] = notification.time
+                }
+            }
+        }
+        Store.replayTombstones.add(entries)
+    }
+
     private func deleteAttachmentLocalFile(for notification: Notification) {
         if let localPath = notification.attachmentLocalPath, !localPath.isEmpty {
             try? FileManager.default.removeItem(at: URL(fileURLWithPath: localPath))
             notification.attachmentLocalPath = nil
         }
+    }
+}
+
+/// Since ntfy v2.31, a `since=<id>` poll also returns the messages published in the same second as
+/// the marker, including ones written before it, so that none are skipped when several servers
+/// write out of order. Messages the app still has are dropped by ID, but ones the user deleted would
+/// come back and notify again. This remembers those deleted IDs, with their message time.
+struct ReplayTombstones {
+    static let maxEntries = 500
+    static let maxAge: Int64 = 7 * 24 * 60 * 60
+
+    private let defaults: UserDefaults
+    private let key: String
+
+    init(defaults: UserDefaults, key: String = "Store.replayTombstones") {
+        self.defaults = defaults
+        self.key = key
+    }
+
+    func contains(_ id: String) -> Bool {
+        return load()[id] != nil
+    }
+
+    /// Adds `entries` (message ID to message time), dropping entries older than `maxAge` and
+    /// keeping only the newest `maxEntries`. Old messages can no longer be replayed: the marker
+    /// only moves forward, and servers expire their message cache.
+    func add(_ entries: [String: Int64], now: Int64 = Int64(Date().timeIntervalSince1970)) {
+        guard !entries.isEmpty else { return }
+        let merged = load().merging(entries) { _, new in new }
+            .filter { now - $0.value <= Self.maxAge }
+        let kept = merged.count <= Self.maxEntries
+            ? merged
+            : Dictionary(uniqueKeysWithValues: merged.sorted { $0.value > $1.value }.prefix(Self.maxEntries).map { ($0.key, $0.value) })
+        defaults.set(kept.mapValues { NSNumber(value: $0) }, forKey: key)
+    }
+
+    private func load() -> [String: Int64] {
+        guard let stored = defaults.dictionary(forKey: key) as? [String: NSNumber] else { return [:] }
+        return stored.mapValues(\.int64Value)
     }
 }
 
