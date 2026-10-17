@@ -452,3 +452,115 @@ final class SequenceIdTests: XCTestCase {
         XCTAssertEqual(store.save(notificationFromMessage: message(), baseUrl: baseUrl, topic: "mytopic")?.shown.count, 1)
     }
 }
+
+final class MessageIconAndCopyActionTests: XCTestCase {
+    private let iconUrl = "https://example.com/icon.png"
+
+    // MARK: - Icons
+
+    func testDecodesIcon() throws {
+        let json = """
+        {"id":"abc","time":1700000000,"event":"message","topic":"mytopic","icon":"https://example.com/icon.png"}
+        """.data(using: .utf8)!
+
+        let message = try JSONDecoder().decode(Message.self, from: json)
+
+        XCTAssertEqual(message.icon, iconUrl)
+        XCTAssertEqual(message.iconUrl, URL(string: iconUrl))
+    }
+
+    func testIconRoundTripsThroughUserInfo() {
+        let original = Message(id: "abc", time: 1, event: "message", topic: "t", icon: iconUrl)
+        XCTAssertEqual(Message.from(userInfo: original.toUserInfo())?.icon, iconUrl)
+
+        // The server sends an empty icon for messages published without one
+        let withoutIcon = Message(id: "abc", time: 1, event: "message", topic: "t")
+        XCTAssertEqual(withoutIcon.toUserInfo()["icon"] as? String, "")
+        XCTAssertNil(Message.from(userInfo: withoutIcon.toUserInfo())?.icon)
+    }
+
+    func testIconUrlOnlyAcceptsHttpUrls() {
+        XCTAssertEqual(Message.iconUrl("http://example.com/a.jpg"), URL(string: "http://example.com/a.jpg"))
+        XCTAssertNil(Message.iconUrl(nil))
+        XCTAssertNil(Message.iconUrl(""))
+        XCTAssertNil(Message.iconUrl("file:///etc/passwd"))
+        XCTAssertNil(Message.iconUrl("not a url"))
+    }
+
+    func testStoresIcon() {
+        let store = Store(inMemory: true)
+        let subscription = store.saveSubscription(baseUrl: "https://ntfy.example.com", topic: "mytopic")
+        let now = Int64(Date().timeIntervalSince1970)
+        let withIcon = Message(id: UUID().uuidString, time: now, event: "message", topic: "mytopic", message: "a", icon: iconUrl)
+        let invalidIcon = Message(id: UUID().uuidString, time: now, event: "message", topic: "mytopic", message: "b", icon: "ftp://x/y.png")
+
+        store.save(notificationsFromMessages: [withIcon, invalidIcon], withSubscription: subscription)
+
+        var icons: [String: String?] = [:]
+        store.context.performAndWait {
+            let notifications = (try? store.context.fetch(ntfy.Notification.fetchRequest())) ?? []
+            icons = Dictionary(uniqueKeysWithValues: notifications.map { ($0.id ?? "", $0.icon) })
+        }
+        XCTAssertEqual(icons[withIcon.id], .some(iconUrl))
+        XCTAssertEqual(icons[invalidIcon.id], .some(nil))
+    }
+
+    func testIconDownloadSizeFollowsAttachmentAutoDownloadSetting() {
+        XCTAssertNil(NotificationIconStore.maxDownloadSize(autoDownloadMaxSize: Store.autoDownloadNever))
+        XCTAssertEqual(NotificationIconStore.maxDownloadSize(autoDownloadMaxSize: Store.autoDownloadAlways), NotificationIconStore.maxIconSize)
+        XCTAssertEqual(NotificationIconStore.maxDownloadSize(autoDownloadMaxSize: Store.autoDownload100KB), Store.autoDownload100KB)
+        XCTAssertEqual(NotificationIconStore.maxDownloadSize(autoDownloadMaxSize: Store.autoDownload50MB), NotificationIconStore.maxIconSize)
+    }
+
+    func testOnlyJpegAndPngAreSupportedIcons() {
+        XCTAssertTrue(NotificationIconStore.isSupportedImage(Data([0xFF, 0xD8, 0xFF, 0xE0, 0x00])))
+        XCTAssertTrue(NotificationIconStore.isSupportedImage(Data([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00])))
+        XCTAssertFalse(NotificationIconStore.isSupportedImage(Data("GIF89a".utf8)))
+        XCTAssertFalse(NotificationIconStore.isSupportedImage(Data("<html>".utf8)))
+        XCTAssertFalse(NotificationIconStore.isSupportedImage(Data()))
+    }
+
+    func testIconCacheIsKeyedByUrl() throws {
+        let url = URL(string: iconUrl)!
+        XCTAssertEqual(NotificationIconStore.cacheKey(for: url), NotificationIconStore.cacheKey(for: URL(string: iconUrl)!))
+        XCTAssertNotEqual(NotificationIconStore.cacheKey(for: url), NotificationIconStore.cacheKey(for: URL(string: iconUrl + "?v=2")!))
+        XCTAssertEqual(NotificationIconStore.cacheKey(for: url).count, 64)
+    }
+
+    func testCachedIconRespectsMaxAge() throws {
+        let url = URL(string: "https://example.com/\(UUID().uuidString).png")!
+        let fileUrl = try NotificationIconStore.localFileUrl(for: url)
+        defer { try? FileManager.default.removeItem(at: fileUrl) }
+        XCTAssertNil(NotificationIconStore.cachedFileUrl(for: url))
+
+        try Data([0x89, 0x50, 0x4E, 0x47]).write(to: fileUrl)
+
+        XCTAssertEqual(NotificationIconStore.cachedFileUrl(for: url), fileUrl)
+        XCTAssertEqual(NotificationIconStore.cachedFileUrl(for: url, maxAge: 60), fileUrl)
+        XCTAssertNil(NotificationIconStore.cachedFileUrl(for: url, maxAge: 60, now: Date().addingTimeInterval(120)))
+    }
+
+    // MARK: - copy action
+
+    func testParsesCopyAction() throws {
+        let actions = Actions.shared.parse("""
+        [{"id":"a1","action":"copy","label":"Copy code","value":"123456","clear":true},
+         {"id":"a2","action":"broadcast","label":"Broadcast"},
+         {"id":"a3","action":"view","label":"Open","url":"https://example.com"}]
+        """)
+
+        XCTAssertEqual(actions?.map(\.action), ["copy", "view"])
+        XCTAssertEqual(actions?.first?.value, "123456")
+        XCTAssertEqual(actions?.first?.clear, true)
+    }
+
+    func testCopyActionValueRoundTripsThroughUserInfo() {
+        let action = Action(id: "a1", action: "copy", label: "Copy code", value: "123456")
+        let original = Message(id: "abc", time: 1, event: "message", topic: "t", actions: [action])
+
+        let roundTripped = Message.from(userInfo: original.toUserInfo())
+
+        XCTAssertEqual(roundTripped?.actions?.map(\.action), ["copy"])
+        XCTAssertEqual(roundTripped?.actions?.first?.value, "123456")
+    }
+}

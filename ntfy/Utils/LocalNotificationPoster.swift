@@ -11,12 +11,14 @@ enum LocalNotificationPoster {
         let content = UNMutableNotificationContent()
         content.modify(message: message, baseUrl: baseUrl)
         content.attachImageIfNeeded(message: message, user: user) {
-            let request = UNNotificationRequest(identifier: message.id, content: content, trigger: nil /* now */)
-            UNUserNotificationCenter.current().add(request) { error in
-                if let error = error {
-                    Log.e(tag, "Unable to create notification", error)
+            content.withIconIfNeeded(message: message) { content in
+                let request = UNNotificationRequest(identifier: message.id, content: content, trigger: nil /* now */)
+                UNUserNotificationCenter.current().add(request) { error in
+                    if let error = error {
+                        Log.e(tag, "Unable to create notification", error)
+                    }
+                    completionHandler?()
                 }
-                completionHandler?()
             }
         }
     }

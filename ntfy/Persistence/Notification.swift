@@ -59,6 +59,11 @@ extension Notification {
         return parseNonEmojiTags(tags)
     }
     
+    /// The icon URL, see `Message.icon`.
+    func iconUrl() -> URL? {
+        Message.iconUrl(icon)
+    }
+
     func actionsList() -> [Action] {
         return Actions.shared.parse(actions) ?? []
     }
@@ -361,9 +366,11 @@ struct Message: Decodable {
     /// replaces it, and `message_delete`/`message_clear` delete it or mark it read. Unset when the
     /// message was published without one, in which case the message ID is the sequence ID.
     var sequenceId: String?
+    /// URL of an image shown next to the notification (`Icon` header when publishing).
+    var icon: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, time, event, topic, message, title, priority, tags, actions, click, attachment
+        case id, time, event, topic, message, title, priority, tags, actions, click, attachment, icon
         case pollId = "poll_id"
         case contentType = "content_type"
         case sequenceId = "sequence_id"
@@ -403,7 +410,8 @@ struct Message: Decodable {
         pollId: String? = nil,
         attachment: MessageAttachment? = nil,
         contentType: String? = nil,
-        sequenceId: String? = nil
+        sequenceId: String? = nil,
+        icon: String? = nil
     ) {
         self.id = id
         self.time = time
@@ -419,6 +427,7 @@ struct Message: Decodable {
         self.attachment = attachment
         self.contentType = contentType
         self.sequenceId = sequenceId
+        self.icon = icon
     }
 
     init(from decoder: Decoder) throws {
@@ -437,6 +446,7 @@ struct Message: Decodable {
         attachment = try container.decodeIfPresent(MessageAttachment.self, forKey: .attachment)
         contentType = try container.decodeIfPresent(String.self, forKey: .contentType)
         sequenceId = try container.decodeIfPresent(String.self, forKey: .sequenceId)
+        icon = try container.decodeIfPresent(String.self, forKey: .icon)
     }
     
     func toUserInfo() -> [AnyHashable: Any] {
@@ -456,7 +466,8 @@ struct Message: Decodable {
             "click": click ?? "",
             "poll_id": pollId ?? "",
             "content_type": contentType ?? "",
-            "sequence_id": sequenceId ?? ""
+            "sequence_id": sequenceId ?? "",
+            "icon": icon ?? ""
         ]
         if let attachment {
             userInfo["attachment_name"] = attachment.name
@@ -486,6 +497,7 @@ struct Message: Decodable {
         let pollId = userInfo["poll_id"] as? String
         let contentType = userInfo["content_type"] as? String
         let sequenceId = (userInfo["sequence_id"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        let icon = (userInfo["icon"] as? String).flatMap { $0.isEmpty ? nil : $0 }
         let attachmentUrl = userInfo["attachment_url"] as? String
         let attachment: MessageAttachment?
         if let attachmentUrl = attachmentUrl, !attachmentUrl.isEmpty {
@@ -513,8 +525,25 @@ struct Message: Decodable {
             pollId: pollId,
             attachment: attachment,
             contentType: contentType,
-            sequenceId: sequenceId
+            sequenceId: sequenceId,
+            icon: icon
         )
+    }
+
+    /// The icon URL, if it is an http(s) URL (see `icon`).
+    var iconUrl: URL? {
+        Message.iconUrl(icon)
+    }
+
+    static func iconUrl(_ icon: String?) -> URL? {
+        guard
+            let icon, !icon.isEmpty,
+            let url = URL(string: icon),
+            let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme)
+        else {
+            return nil
+        }
+        return url
     }
 }
 
@@ -527,4 +556,6 @@ struct Action: Encodable, Decodable, Identifiable {
     var headers: [String: String]?
     var body: String?
     var clear: Bool?
+    /// The value a `copy` action copies to the clipboard.
+    var value: String?
 }

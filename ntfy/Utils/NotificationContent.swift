@@ -1,4 +1,5 @@
 import Foundation
+import Intents
 import UserNotifications
 
 extension UNMutableNotificationContent {
@@ -149,6 +150,95 @@ extension UNMutableNotificationContent {
                 self.completeAttachmentHandling(message: message, didAttachImage: false, completionHandler: completionHandler)
             }
         }.resume()
+    }
+
+    /// Shows the message icon (see `Message.icon`), if any, as the sender image of a
+    /// communication notification. If iOS refuses that, the icon is attached as an image instead,
+    /// unless the notification already shows an image attachment. Downloading the icon follows
+    /// the attachment auto-download setting and gives up quickly, so this always completes with
+    /// the notification content to deliver, the original one if the icon can't be shown.
+    func withIconIfNeeded(message: Message, completionHandler: @escaping (UNNotificationContent) -> Void) {
+        guard
+            let iconUrl = message.iconUrl,
+            let maxSize = NotificationIconStore.maxDownloadSize(
+                autoDownloadMaxSize: Store.shared.getAttachmentAutoDownloadMaxSize()
+            )
+        else {
+            completionHandler(self)
+            return
+        }
+        Task {
+            let iconFileUrl: URL
+            do {
+                iconFileUrl = try await NotificationIconStore.icon(for: iconUrl, maxSize: maxSize)
+            } catch {
+                Log.w("NotificationContent", "Failed to download icon \(iconUrl)", error)
+                completionHandler(self)
+                return
+            }
+            completionHandler(self.withIcon(fileUrl: iconFileUrl))
+        }
+    }
+
+    private func withIcon(fileUrl: URL) -> UNNotificationContent {
+        guard let data = try? Data(contentsOf: fileUrl) else {
+            return self
+        }
+        let image = INImage(imageData: data)
+        let sender = INPerson(
+            personHandle: INPersonHandle(value: threadIdentifier, type: .unknown),
+            nameComponents: nil,
+            displayName: title,
+            image: image,
+            contactIdentifier: nil,
+            customIdentifier: threadIdentifier
+        )
+        let intent = INSendMessageIntent(
+            recipients: nil,
+            outgoingMessageType: .outgoingMessageText,
+            content: body,
+            speakableGroupName: nil,
+            conversationIdentifier: threadIdentifier,
+            serviceName: nil,
+            sender: sender,
+            attachments: nil
+        )
+        intent.setImage(image, forParameterNamed: \.sender)
+        let interaction = INInteraction(intent: intent, response: nil)
+        interaction.direction = .incoming
+        interaction.donate { error in
+            if let error {
+                Log.w("NotificationContent", "Failed to donate message interaction", error)
+            }
+        }
+        do {
+            return try updating(from: intent)
+        } catch {
+            Log.w("NotificationContent", "Cannot show icon as communication notification, attaching it instead", error)
+        }
+        if attachments.isEmpty, let attachment = iconAttachment(fileUrl: fileUrl) {
+            attachments = [attachment]
+        }
+        return self
+    }
+
+    /// Attaching a file moves it into the notification store, so this attaches a copy to keep
+    /// the cached icon.
+    private func iconAttachment(fileUrl: URL) -> UNNotificationAttachment? {
+        guard let data = try? Data(contentsOf: fileUrl) else {
+            return nil
+        }
+        let fileExtension = data.starts(with: [0x89, 0x50, 0x4E, 0x47]) ? "png" : "jpg"
+        let copyUrl = FileManager.default.temporaryDirectory
+            .appendingPathComponent("icon-\(UUID().uuidString)")
+            .appendingPathExtension(fileExtension)
+        do {
+            try data.write(to: copyUrl)
+            return try UNNotificationAttachment(identifier: "icon", url: copyUrl)
+        } catch {
+            Log.w("NotificationContent", "Failed to attach icon", error)
+            return nil
+        }
     }
 
     private func attachLocalImage(from localFileUrl: URL) -> Bool {

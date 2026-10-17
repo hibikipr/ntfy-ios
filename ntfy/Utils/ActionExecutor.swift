@@ -15,6 +15,8 @@ struct ActionExecutor {
             }
         case "http":
             http(action)
+        case "copy":
+            copy(action)
         default:
             Log.w(tag, "Action \(action.action) not supported", action)
         }
@@ -47,6 +49,14 @@ struct ActionExecutor {
         }.resume()
     }
     
+    private static func copy(_ action: Action) {
+        guard let value = action.value else {
+            Log.w(tag, "Unable to execute copy action, no value", action)
+            return
+        }
+        UIPasteboard.general.string = value
+    }
+
     private static func open(url: URL) {
         Log.d(tag, "Opening URL \(url)")
         UIApplication.shared.open(url, options: [:], completionHandler: nil)
