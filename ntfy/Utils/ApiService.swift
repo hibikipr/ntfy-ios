@@ -18,7 +18,7 @@ class ApiService {
         return URLSession(configuration: configuration)
     }()
 
-    func poll(subscription: Subscription, user: BasicUser?) async throws -> [Message] {
+    func poll(subscription: Subscription, user: BasicUser?) async throws -> PollResponse {
         guard let url = URL(string: subscription.urlString()) else {
             throw URLError(.badURL)
         }
@@ -26,7 +26,10 @@ class ApiService {
         let urlString = "\(url)/json?poll=1&since=\(since)"
 
         Log.d(tag, "Polling from \(urlString) with user \(user != nil ? "<redacted>" : "anonymous")")
-        return try await fetchJsonData(urlString: urlString, user: user)
+        let (messages, response): ([Message], HTTPURLResponse) = try await fetchJsonData(urlString: urlString, user: user)
+        // Since ntfy v2.28, a replay is capped (10 MB per topic) and keeps only the newest messages
+        let truncated = response.value(forHTTPHeaderField: "X-Messages-Truncated") == "1"
+        return PollResponse(messages: messages, truncated: truncated)
     }
 
     func poll(baseUrl: String, topic: String, messageId: String, user: BasicUser?) async throws -> Message {
@@ -108,15 +111,18 @@ class ApiService {
         }
     }
 
-    private func fetchJsonData<T: Decodable>(urlString: String, user: BasicUser?) async throws -> [T] {
+    private func fetchJsonData<T: Decodable>(urlString: String, user: BasicUser?) async throws -> ([T], HTTPURLResponse) {
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
         }
         let request = newRequest(url: url, user: user, timeout: 30)
         do {
             let (data, response) = try await Self.session.data(for: request)
-            guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
+            guard let httpResponse = response as? HTTPURLResponse else {
                 throw URLError(.badServerResponse)
+            }
+            guard (200..<300).contains(httpResponse.statusCode) else {
+                throw PollError(statusCode: httpResponse.statusCode, body: data)
             }
             let lines = String(decoding: data, as: UTF8.self).split(whereSeparator: \.isNewline)
             var notifications: [T] = []
@@ -126,7 +132,7 @@ class ApiService {
                 }
                 notifications.append(try JSONDecoder().decode(T.self, from: jsonData))
             }
-            return notifications
+            return (notifications, httpResponse)
         } catch {
             Log.e(tag, "Error fetching data", error)
             throw error
@@ -149,6 +155,28 @@ struct BasicUser {
     
     func toHeader() -> String {
         return "Basic " + String(format: "%@:%@", username, password).data(using: String.Encoding.utf8)!.base64EncodedString()
+    }
+}
+
+struct PollResponse {
+    let messages: [Message]
+    /// The server dropped older messages to stay under its replay size limit
+    let truncated: Bool
+}
+
+/// A poll the server answered with an error status, e.g. `{"code":42905,"http":429,"error":"limit reached: daily bandwidth reached"}`
+enum PollError: Error, Equatable {
+    case unauthorized
+    case rateLimited(message: String?)
+    case server(status: Int, message: String?)
+
+    init(statusCode: Int, body: Data) {
+        let message = (try? JSONDecoder().decode(AuthCheckResponse.self, from: body))?.error
+        switch statusCode {
+        case 401, 403: self = .unauthorized
+        case 429: self = .rateLimited(message: message)
+        default: self = .server(status: statusCode, message: message)
+        }
     }
 }
 

@@ -452,3 +452,41 @@ final class SequenceIdTests: XCTestCase {
         XCTAssertEqual(store.save(notificationFromMessage: message(), baseUrl: baseUrl, topic: "mytopic")?.shown.count, 1)
     }
 }
+
+final class PollErrorTests: XCTestCase {
+    func testRateLimitKeepsServerMessage() {
+        let body = #"{"code":42905,"http":429,"error":"limit reached: daily bandwidth reached"}"#.data(using: .utf8)!
+
+        XCTAssertEqual(PollError(statusCode: 429, body: body), .rateLimited(message: "limit reached: daily bandwidth reached"))
+    }
+
+    func testAuthStatusesAreUnauthorized() {
+        XCTAssertEqual(PollError(statusCode: 401, body: Data()), .unauthorized)
+        XCTAssertEqual(PollError(statusCode: 403, body: Data()), .unauthorized)
+    }
+
+    func testOtherStatusWithoutJSONBody() {
+        XCTAssertEqual(PollError(statusCode: 502, body: "Bad Gateway".data(using: .utf8)!), .server(status: 502, message: nil))
+    }
+
+    func testRateLimitIssueBacksOff() {
+        let now = Date(timeIntervalSince1970: 1_000)
+        let issue = PollIssue(.rateLimited(message: nil), now: now)
+
+        XCTAssertEqual(issue, .rateLimited(until: now.addingTimeInterval(PollIssue.rateLimitBackoff), message: nil))
+    }
+
+    @MainActor
+    func testStatusCenterSkipsOnlyDuringBackoff() {
+        let center = PollStatusCenter()
+        let now = Date(timeIntervalSince1970: 1_000)
+        center.record(PollIssue(.rateLimited(message: nil), now: now), for: "topic")
+
+        XCTAssertNotNil(center.rateLimitedUntil("topic", now: now))
+        XCTAssertNil(center.rateLimitedUntil("topic", now: now.addingTimeInterval(PollIssue.rateLimitBackoff + 1)))
+        XCTAssertNil(center.rateLimitedUntil("other", now: now))
+
+        center.record(nil, for: "topic")
+        XCTAssertNil(center.issues["topic"])
+    }
+}

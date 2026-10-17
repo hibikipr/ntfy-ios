@@ -77,12 +77,28 @@ struct SubscriptionManager {
             return []
         }
 
+        let statusKey = subscription.urlString()
+        let pollStatus = PollStatusCenter.shared
+        if let until = pollStatus.rateLimitedUntil(statusKey) {
+            Log.d(tag, "Skipping poll of \(statusKey), rate limited until \(until)")
+            return []
+        }
         let user = store.getUser(baseUrl: subscription.baseUrl!)?.toBasicUser()
         Log.d(tag, "Polling from \(subscription.urlString()) with user \(user != nil ? "<redacted>" : "anonymous")")
         let messages: [Message]
         do {
-            messages = try await ApiService.shared.poll(subscription: subscription, user: user)
+            let response = try await ApiService.shared.poll(subscription: subscription, user: user)
+            messages = response.messages
+            if response.truncated {
+                Log.w(tag, "Server truncated the replay for \(statusKey), older messages were not returned")
+            }
+            pollStatus.record(response.truncated ? .truncated : nil, for: statusKey)
+        } catch let error as PollError {
+            Log.e(tag, "Polling failed", error)
+            pollStatus.record(PollIssue(error), for: statusKey)
+            return []
         } catch {
+            // Network errors (offline, timeouts) are transient and not worth a banner
             Log.e(tag, "Polling failed", error)
             return []
         }
@@ -105,5 +121,80 @@ struct SubscriptionManager {
             }
         }
         return saved.shown
+    }
+}
+
+/// Why the last poll of a subscription didn't fully work, shown in its notification list
+enum PollIssue: Equatable {
+    case unauthorized
+    case rateLimited(until: Date, message: String?)
+    case serverError(status: Int, message: String?)
+    case truncated
+
+    /// Polls are skipped for this long after a 429; ntfy doesn't send `Retry-After`
+    static let rateLimitBackoff: TimeInterval = 5 * 60
+
+    init(_ error: PollError, now: Date = Date()) {
+        switch error {
+        case .unauthorized:
+            self = .unauthorized
+        case .rateLimited(let message):
+            self = .rateLimited(until: now.addingTimeInterval(PollIssue.rateLimitBackoff), message: message)
+        case .server(let status, let message):
+            self = .serverError(status: status, message: message)
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .unauthorized: return "Not authorized"
+        case .rateLimited: return "Server limit reached"
+        case .serverError: return "Server error"
+        case .truncated: return "Older messages not loaded"
+        }
+    }
+
+    var detail: String {
+        switch self {
+        case .unauthorized:
+            return "The server refused access to this topic. Check the user for this server in Settings."
+        case .rateLimited(let until, let message):
+            let time = until.formatted(date: .omitted, time: .shortened)
+            return "\(message.map { "\($0.prefix(1).uppercased())\($0.dropFirst()). " } ?? "")Refreshing pauses until \(time)."
+        case .serverError(let status, let message):
+            return message.map { "\($0.prefix(1).uppercased())\($0.dropFirst()) (HTTP \(status))." } ?? "The server responded with HTTP \(status)."
+        case .truncated:
+            return "The server only returned its newest messages for this topic."
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .unauthorized: return "lock.trianglebadge.exclamationmark"
+        case .rateLimited: return "hourglass"
+        case .serverError: return "exclamationmark.triangle"
+        case .truncated: return "info.circle"
+        }
+    }
+}
+
+/// Last poll outcome per subscription (keyed by `Subscription.urlString()`), kept in memory only.
+@MainActor
+final class PollStatusCenter: ObservableObject {
+    static let shared = PollStatusCenter()
+
+    init() {}
+
+    @Published private(set) var issues: [String: PollIssue] = [:]
+
+    func record(_ issue: PollIssue?, for key: String) {
+        guard issues[key] != issue else { return }
+        issues[key] = issue
+    }
+
+    /// The end of an active rate limit back-off, or nil if polling is allowed
+    func rateLimitedUntil(_ key: String, now: Date = Date()) -> Date? {
+        guard case .rateLimited(let until, _) = issues[key], until > now else { return nil }
+        return until
     }
 }

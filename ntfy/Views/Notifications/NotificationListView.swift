@@ -22,6 +22,7 @@ struct NotificationListView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var store: Store
     @EnvironmentObject private var iconManager: AppIconManager
+    @ObservedObject private var pollStatus = PollStatusCenter.shared
 
     @ObservedObject var subscription: Subscription
     @StateObject private var notificationsModel: NotificationsObservable
@@ -186,6 +187,20 @@ struct NotificationListView: View {
     
     @ViewBuilder
     private var notificationRows: some View {
+        if let issue = pollStatus.issues[subscription.urlString()] {
+            Section {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(issue.title).font(.subheadline.weight(.semibold))
+                        Text(issue.detail).font(.footnote).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: issue.systemImage)
+                        .foregroundStyle(issue == .truncated ? Color.secondary : Color.orange)
+                }
+                .selectionDisabled()
+            }
+        }
         ForEach(filteredNotifications, id: \.self) { notification in
             NotificationRowView(
                 notification: notification,
