@@ -228,7 +228,9 @@ extension NotificationRowView {
         private static let cache = NSCache<NSURL, UIImage>()
 
         var body: some View {
-            Group {
+            // A ZStack, not a Group: a Group's modifiers go to its children, and while `image`
+            // is nil it has none, so the `.task` that loads the image would never run.
+            ZStack {
                 if let image {
                     Image(uiImage: image)
                         .resizable()
