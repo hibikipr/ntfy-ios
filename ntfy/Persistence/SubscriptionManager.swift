@@ -196,6 +196,16 @@ final class PollStatusCenter: ObservableObject {
     func record(_ issue: PollIssue?, for key: String) {
         guard issues[key] != issue else { return }
         issues[key] = issue
+        // A rate limit is over when its back-off ends, not when the next poll succeeds: clear it
+        // then, so the list doesn't keep saying refreshing is paused until a time that has passed.
+        if case .rateLimited(let until, _) = issue {
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(max(0, until.timeIntervalSinceNow)))
+                if self?.issues[key] == issue {
+                    self?.issues[key] = nil
+                }
+            }
+        }
     }
 
     /// The end of an active rate limit back-off, or nil if polling is allowed

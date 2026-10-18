@@ -676,6 +676,26 @@ final class PollErrorTests: XCTestCase {
         center.record(nil, for: "topic")
         XCTAssertNil(center.issues["topic"])
     }
+
+    @MainActor
+    func testStatusCenterClearsRateLimitWhenBackoffEnds() async throws {
+        let center = PollStatusCenter()
+        center.record(.rateLimited(until: Date().addingTimeInterval(0.2), message: nil), for: "topic")
+        XCTAssertNotNil(center.issues["topic"])
+
+        try await Task.sleep(for: .seconds(0.5))
+        XCTAssertNil(center.issues["topic"])
+    }
+
+    @MainActor
+    func testStatusCenterKeepsANewerIssueWhenOldBackoffEnds() async throws {
+        let center = PollStatusCenter()
+        center.record(.rateLimited(until: Date().addingTimeInterval(0.2), message: nil), for: "topic")
+        center.record(.unauthorized, for: "topic")
+
+        try await Task.sleep(for: .seconds(0.5))
+        XCTAssertEqual(center.issues["topic"], .unauthorized)
+    }
 }
 
 final class MessageIconAndCopyActionTests: XCTestCase {
