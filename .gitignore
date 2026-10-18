@@ -5,3 +5,9 @@ ntfy.xcodeproj/project.xcworkspace/xcuserdata/
 .worktrees/
 .claude/settings.local.json
 .build/
+
+# Vendored Ruby gems and local fastlane artifacts
+fastlane/vendor/
+fastlane/.bundle/
+fastlane/.env.asc
+fastlane/report.xml
