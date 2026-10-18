@@ -131,7 +131,7 @@ struct NotificationRowView: View {
                 HStack {
                     ForEach(notification.actionsList()) { action in
                         Button(action.label) {
-                            ActionExecutor.execute(action)
+                            ActionExecutor.execute(action, clear: clearDeliveredNotification)
                             if action.action == "copy" {
                                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                                 showCopyFeedback()
@@ -201,6 +201,19 @@ struct NotificationRowView: View {
         } else {
             copyMessage()
         }
+    }
+
+    /// Removes this notification from Notification Center, for actions with `clear: true`
+    private func clearDeliveredNotification() {
+        guard let subscription = notification.subscription,
+              let baseUrl = subscription.baseUrl,
+              let topic = subscription.topic else { return }
+        let sequenceId = notification.sequenceId ?? notification.id ?? ""
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+            baseUrl: baseUrl,
+            topic: topic,
+            sequenceIds: [sequenceId]
+        ) {}
     }
 }
 

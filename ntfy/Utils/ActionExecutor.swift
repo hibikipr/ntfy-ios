@@ -3,8 +3,10 @@ import UIKit
 
 struct ActionExecutor {
     private static let tag = "ActionExecutor"
-        
-    static func execute(_ action: Action) {
+
+    /// Executes the action, then calls `clear` if the action has `clear: true` set, so the caller
+    /// can dismiss the notification it came from (see https://docs.ntfy.sh/publish/#action-buttons).
+    static func execute(_ action: Action, clear: (() -> Void)? = nil) {
         Log.d(tag, "Executing user action", action)
         switch action.action {
         case "view":
@@ -19,6 +21,9 @@ struct ActionExecutor {
             copy(action)
         default:
             Log.w(tag, "Action \(action.action) not supported", action)
+        }
+        if action.clear == true {
+            clear?()
         }
     }
     
