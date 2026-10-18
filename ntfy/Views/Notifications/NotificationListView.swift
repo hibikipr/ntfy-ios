@@ -46,7 +46,7 @@ struct NotificationListView: View {
     var body: some View {
         notificationList
             .refreshable {
-                await subscriptionManager.poll(subscription)
+                await subscriptionManager.poll(subscription, force: true)
             }
     }
     
@@ -279,7 +279,7 @@ struct NotificationListView: View {
                     priority: priority,
                     tags: tags
                 )
-                await subscriptionManager.poll(subscription)
+                await subscriptionManager.poll(subscription, force: true)
             } catch {
                 Log.e(tag, "Error sending test notification", error)
             }

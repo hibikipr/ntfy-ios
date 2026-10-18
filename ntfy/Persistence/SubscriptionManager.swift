@@ -68,20 +68,30 @@ struct SubscriptionManager {
         }
     }
     
+    /// Polls the subscription for new messages. Overlapping polls of the same subscription share
+    /// one request, and one that polled successfully moments ago is skipped (see `PollCoalescer`),
+    /// unless `force` is set: for when the user asked to refresh that one topic.
     @discardableResult
     @MainActor
-    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true) async -> [Message] {
+    func poll(_ subscription: Subscription, notifyOnNewMessages: Bool = true, force: Bool = false) async -> [Message] {
         // This is a bit of a hack but it prevents us from polling dead subscriptions
         guard subscription.baseUrl != nil else {
             Log.d(tag, "Attempting to poll dead subscription failed")
             return []
         }
-
         let statusKey = subscription.urlString()
+        return await PollCoalescer.shared.poll(key: statusKey, force: force) {
+            await performPoll(subscription, statusKey: statusKey, notifyOnNewMessages: notifyOnNewMessages)
+        }
+    }
+
+    /// One poll request. `succeeded` is false when it was skipped or failed.
+    @MainActor
+    private func performPoll(_ subscription: Subscription, statusKey: String, notifyOnNewMessages: Bool) async -> PollCoalescer.Outcome {
         let pollStatus = PollStatusCenter.shared
         if let until = pollStatus.rateLimitedUntil(statusKey) {
             Log.d(tag, "Skipping poll of \(statusKey), rate limited until \(until)")
-            return []
+            return .init(messages: [], succeeded: false)
         }
         let user = store.getCredentials(baseUrl: subscription.baseUrl!)
         Log.d(tag, "Polling from \(subscription.urlString()) with user \(user != nil ? "<redacted>" : "anonymous")")
@@ -96,15 +106,15 @@ struct SubscriptionManager {
         } catch let error as PollError {
             Log.e(tag, "Polling failed", error)
             pollStatus.record(PollIssue(error), for: statusKey)
-            return []
+            return .init(messages: [], succeeded: false)
         } catch {
             // Network errors (offline, timeouts) are transient and not worth a banner
             Log.e(tag, "Polling failed", error)
-            return []
+            return .init(messages: [], succeeded: false)
         }
         Log.d(tag, "Polling success, \(messages.count) new message(s)", messages)
         guard !messages.isEmpty else {
-            return []
+            return .init(messages: [], succeeded: true)
         }
         let saved = store.save(notificationsFromMessages: messages, withSubscription: subscription)
         guard
@@ -113,14 +123,14 @@ struct SubscriptionManager {
             let baseUrl = subscription.baseUrl,
             let topic = subscription.topic
         else {
-            return saved.shown
+            return .init(messages: saved.shown, succeeded: true)
         }
         await withCheckedContinuation { continuation in
             LocalNotificationPoster.update(baseUrl: baseUrl, topic: topic, saved: saved) {
                 continuation.resume()
             }
         }
-        return saved.shown
+        return .init(messages: saved.shown, succeeded: true)
     }
 }
 
@@ -181,6 +191,52 @@ enum PollIssue: Equatable {
         case .serverError: return "exclamationmark.triangle"
         case .truncated: return "info.circle"
         }
+    }
+}
+
+/// Keeps polls of the same subscription from piling up. Several screens and the background
+/// "~poll" handler each poll every subscription, one request apiece, and they overlap: a few in a
+/// row used up ntfy's per-client request limit (a burst of 60, then 1 per 5 s). A poll already in
+/// flight is joined instead of repeated, and one that succeeded within `minInterval` is skipped.
+@MainActor
+final class PollCoalescer {
+    static let shared = PollCoalescer()
+
+    struct Outcome {
+        var messages: [Message]
+        /// Whether the server answered. Only a successful poll starts the `minInterval` window,
+        /// so a failed or skipped one can be retried right away.
+        var succeeded: Bool
+    }
+
+    let minInterval: TimeInterval
+    private let now: () -> Date
+    private var inFlight: [String: Task<Outcome, Never>] = [:]
+    private var lastSuccess: [String: Date] = [:]
+
+    init(minInterval: TimeInterval = 10, now: @escaping () -> Date = Date.init) {
+        self.minInterval = minInterval
+        self.now = now
+    }
+
+    /// Runs `request` for `key`, or joins the one in flight, or skips it if `key` polled
+    /// successfully within `minInterval` (unless `force`). Returns the messages it brought.
+    func poll(key: String, force: Bool = false, _ request: @escaping @MainActor () async -> Outcome) async -> [Message] {
+        if let running = inFlight[key] {
+            return await running.value.messages
+        }
+        if !force, let last = lastSuccess[key], now().timeIntervalSince(last) < minInterval {
+            Log.d("PollCoalescer", "Skipping poll of \(key), polled \(Int(now().timeIntervalSince(last)))s ago")
+            return []
+        }
+        let task = Task { @MainActor in await request() }
+        inFlight[key] = task
+        let outcome = await task.value
+        inFlight[key] = nil
+        if outcome.succeeded {
+            lastSuccess[key] = now()
+        }
+        return outcome.messages
     }
 }
 

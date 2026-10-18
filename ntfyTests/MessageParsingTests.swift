@@ -809,3 +809,68 @@ final class MessageIconAndCopyActionTests: XCTestCase {
         XCTAssertEqual(roundTripped?.actions?.first?.value, "123456")
     }
 }
+
+@MainActor
+final class PollCoalescerTests: XCTestCase {
+    private var clock = Date(timeIntervalSince1970: 1_000)
+    private var requests = 0
+
+    private func coalescer() -> PollCoalescer {
+        PollCoalescer(minInterval: 10, now: { [unowned self] in clock })
+    }
+
+    private func request(succeeded: Bool = true, delay: Duration = .zero) -> @MainActor () async -> PollCoalescer.Outcome {
+        { [unowned self] in
+            requests += 1
+            if delay > .zero { try? await Task.sleep(for: delay) }
+            return .init(messages: [Message(id: "m\(requests)", time: 1, event: "message", topic: "t")], succeeded: succeeded)
+        }
+    }
+
+    func testOverlappingPollsShareOneRequest() async {
+        let c = coalescer()
+        async let first = c.poll(key: "t", request(delay: .milliseconds(100)))
+        async let second = c.poll(key: "t", request(delay: .milliseconds(100)))
+        let (a, b) = await (first, second)
+
+        XCTAssertEqual(requests, 1)
+        XCTAssertEqual(a.map(\.id), ["m1"])
+        XCTAssertEqual(b.map(\.id), ["m1"])
+    }
+
+    func testSkipsARecentSuccessUntilTheWindowEnds() async {
+        let c = coalescer()
+        _ = await c.poll(key: "t", request())
+        clock.addTimeInterval(5)
+        let skipped = await c.poll(key: "t", request())
+        clock.addTimeInterval(6)
+        _ = await c.poll(key: "t", request())
+
+        XCTAssertTrue(skipped.isEmpty)
+        XCTAssertEqual(requests, 2)
+    }
+
+    func testForcePollsInsideTheWindow() async {
+        let c = coalescer()
+        _ = await c.poll(key: "t", request())
+        _ = await c.poll(key: "t", force: true, request())
+
+        XCTAssertEqual(requests, 2)
+    }
+
+    func testOtherSubscriptionsAreNotSkipped() async {
+        let c = coalescer()
+        _ = await c.poll(key: "a", request())
+        _ = await c.poll(key: "b", request())
+
+        XCTAssertEqual(requests, 2)
+    }
+
+    func testAFailedPollCanBeRetriedRightAway() async {
+        let c = coalescer()
+        _ = await c.poll(key: "t", request(succeeded: false))
+        _ = await c.poll(key: "t", request())
+
+        XCTAssertEqual(requests, 2)
+    }
+}
